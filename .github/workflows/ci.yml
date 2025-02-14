@@ -40,7 +40,8 @@ jobs:
       - uses: crusty-pie/toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        env: 
+        env:
+          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-Cinstrument-coverage"
           LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
         run: |
@@ -51,7 +52,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-files
-          path: coverage* 
+          path: coverage*
+      - name: Upload target dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: target
+          path: ./target/
 
 
   coverage:
@@ -69,10 +75,16 @@ jobs:
         with:
           name: coverage-files
           path: .
+      - name: Download target dir
+        uses: actions/download-artifact@v4
+        with:
+          name: target
+          path: ./target/
       - name: Generate coverage report
         run: |
           grcov . \
             -s . \
+            --binary-path ./target/debug/ \
             -t lcov \
             --branch \
             --ignore-not-existing \
