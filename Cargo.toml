@@ -1,0 +1,24 @@
+[package]
+name = "rustilities"
+version = "1.0.0"
+repository = "https://github.com/tsenovilla/rustilities"
+license = "GPL-3.0"
+rust-version = "1.84.0"
+edition = "2021"
+description = "This crate offers a few utils for Rust development"
+documentation = "https://docs.rs/rustilities"
+
+[dependencies]
+thiserror = "2.0.11"
+
+[features]
+full = []
+paths = []
+fmt = []
+
+[dev-dependencies]
+tempfile = "3.16.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

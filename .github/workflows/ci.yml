@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crusty-pie/toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - name: Check
+        run: |
+          cargo check --all-features --release
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crusty-pie/toolchain@v1
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Fmt
+        run: |
+          cargo +nightly fmt --all --check
+      - name: Clippy
+        run: |
+          cargo clippy --all-features -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [check, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crusty-pie/toolchain@v1
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        env: 
+          RUSTFLAGS: "-Cinstrument-coverage"
+          LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+        run: |
+          cargo test --features paths
+        # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
+          cargo test --features fmt -- --test-threads=1
+
