@@ -27,7 +27,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Fmt
         run: |
-          rustup show
           cargo +nightly fmt --all --check
       - name: Clippy
         run: |
@@ -39,11 +38,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: crusty-pie/toolchain@v1
-      # The fmt feature needs nightly to run all its tests
-      - name: Install nightly
-        run: |
-          rustup toolchain install nightly
-          rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         env: 

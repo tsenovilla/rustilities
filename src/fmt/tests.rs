@@ -106,8 +106,17 @@ impl TestBuilder {
 				.expect("temp dir permissions should be configurable; qed;");
 		}
 
-		// Remove nightly if needed
-		if self.without_nightly_component {
+		// Install the nightly fmt component if needed, or remove it if not needed
+		if !self.without_nightly_component {
+			// Add the nightly fmt if possible
+			let _ = Command::new("rustup")
+				.arg("component")
+				.arg("add")
+				.arg("rustfmt")
+				.arg("--toolchain")
+				.arg("nightly")
+				.output();
+		} else {
 			// Remove the nightly fmt if possible
 			let _ = Command::new("rustup")
 				.arg("component")
@@ -125,17 +134,6 @@ impl TestBuilder {
 		F: Fn(&Self) -> (),
 	{
 		test(self);
-		// Reinstall the nightly component if needed
-		if self.without_nightly_component {
-			// Add the nightly fmt if possible
-			let _ = Command::new("rustup")
-				.arg("component")
-				.arg("add")
-				.arg("rustfmt")
-				.arg("--toolchain")
-				.arg("nightly")
-				.output();
-		}
 	}
 }
 
