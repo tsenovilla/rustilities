@@ -65,10 +65,10 @@ jobs:
         run: |
           cargo install grcov
       - name: Download coverage profraw files
-          uses: actions/download-artifact@v4
-          with:
-            name: coverage-files
-            path: .
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-files
+          path: .
       - name: Generate coverage report
         run: |
           grcov . \
