@@ -47,6 +47,12 @@ jobs:
           cargo test --features paths
           # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
           cargo test --features fmt -- --test-threads=1
+      - name: Upload coverage profraw files
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-files
+          path: coverage* 
+
 
   coverage:
     runs-on: ubuntu-latest
@@ -54,9 +60,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: crusty-pie/toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - name: Install grcov
         run: |
           cargo install grcov
+      - name: Download coverage profraw files
+          uses: actions/download-artifact@v4
+          with:
+            name: coverage-files
+            path: .
       - name: Generate coverage report
         run: |
           grcov . \
