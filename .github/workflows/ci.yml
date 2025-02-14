@@ -72,7 +72,6 @@ jobs:
       - name: Generate coverage report
         run: |
           grcov . \
-            --binary-path target/debug/ \
             -s . \
             -t lcov \
             --branch \
