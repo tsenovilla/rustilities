@@ -27,6 +27,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Fmt
         run: |
+          rustup show
           cargo +nightly fmt --all --check
       - name: Clippy
         run: |
