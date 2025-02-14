@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install tollchain
-        uses: crusty-pie/toolchain@v1
+      - uses: crusty-pie/toolchain@v1
         with:
           toolchain: nightly
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Fmt
         run: |
