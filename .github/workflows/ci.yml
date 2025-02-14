@@ -45,6 +45,6 @@ jobs:
           LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
         run: |
           cargo test --features paths
-        # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
+          # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
           cargo test --features fmt -- --test-threads=1
 
