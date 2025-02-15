@@ -65,7 +65,7 @@ jobs:
           cargo llvm-cov \
           --features fmt \
           --lcov \
-          --ignore-filename-regex "/tests\.rs$"
+          --ignore-filename-regex "/tests\.rs$" \
           --output-path lcov_fmt.info \
           -- \
           --test-threads=1
