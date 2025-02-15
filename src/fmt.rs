@@ -20,25 +20,25 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 		.arg("--all")
 		.current_dir(path.as_ref())
 		.output()?
-    .and_then(|output|{
-            if output.status.success(){
-                Ok(())
-            } else {
-                Command::new("cargo")
-                    .arg("fmt")
-                    .arg("--all")
-                    .current_dir(path.as_ref())
-                    .output()
-                    .expect("If cargo fmt --all failed with IO error, that error would have been captured by cargo +nightly fmt --all previously; qed;")
-                    .and_then(|output|{
-                        if output.status.success(){
-                            Ok(())
-                        } else {
-                            Err(Error::Descriptive(
-				                        String::from_utf8_lossy(&output_fallback.stderr).into_owned(),
-			                      ))
-                        }
-            })
-            }
-    })
+		.and_then(|output| {
+			if output.status.success() {
+				Ok(())
+			} else {
+				Command::new("cargo")
+					.arg("fmt")
+					.arg("--all")
+					.current_dir(path.as_ref())
+					.output()
+					.and_then(|output| {
+						if output.status.success() {
+							Ok(())
+						} else {
+							Err(Error::Descriptive(
+								String::from_utf8_lossy(&output.stderr).into_owned(),
+							))
+						}
+					})
+					.expect("If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;")
+			}
+		})
 }
