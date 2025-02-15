@@ -21,10 +21,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: "./.github/actions/init"
-      - name: Install nightly
-        run: |
-          rustup toolchain install nightly
-          rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
+      - name: Install nightly rustfmt
+        run: rustup toolchain install nightly --component rustfmt 
       - name: Fmt
         run: |
           cargo +nightly fmt --all --check
@@ -52,7 +50,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: "./.github/actions/init"
-      - name: Install Rust toolchain
+      - name: Install nightly llvm-tools-preview
         run: rustup toolchain install nightly --component llvm-tools-preview
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

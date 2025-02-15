@@ -13,7 +13,7 @@ struct TestBuilder {
 	tempdir: TempDir,
 	with_invalid_code: bool,
 	with_permissionless_temp_dir: bool,
-	without_nightly_component: bool,
+	with_nightly_component: bool,
 	fmt_code_path: PathBuf,
 	not_fmt_code_path: PathBuf,
 }
@@ -67,7 +67,7 @@ pub enum A {
 			tempdir,
 			with_invalid_code: false,
 			with_permissionless_temp_dir: false,
-			without_nightly_component: false,
+			with_nightly_component: false,
 			fmt_code_path,
 			not_fmt_code_path,
 		}
@@ -85,8 +85,8 @@ impl TestBuilder {
 		self
 	}
 
-	fn without_nightly_component(mut self) -> Self {
-		self.without_nightly_component = true;
+	fn with_nightly_component(mut self) -> Self {
+		self.with_nightly_component = true;
 		self
 	}
 
@@ -107,7 +107,7 @@ impl TestBuilder {
 		}
 
 		// Install the nightly fmt component if needed, or remove it if not needed
-		if !self.without_nightly_component {
+		if self.with_nightly_component {
 			// Add the nightly fmt if possible
 			let _ = Command::new("rustup")
 				.arg("component")
@@ -139,7 +139,7 @@ impl TestBuilder {
 
 #[test]
 fn format_dir_works_if_nightly_available() {
-	TestBuilder::default().build().execute(|builder| {
+	TestBuilder::default().with_nightly_component().build().execute(|builder| {
 		assert!(format_dir(builder.tempdir.path()).is_ok());
 		assert_eq!(
 			std::fs::read_to_string(&builder.fmt_code_path)
@@ -152,7 +152,7 @@ fn format_dir_works_if_nightly_available() {
 
 #[test]
 fn format_dir_also_if_nightly_fmt_fails() {
-	TestBuilder::default().without_nightly_component().build().execute(|builder| {
+	TestBuilder::default().build().execute(|builder| {
 		assert!(format_dir(builder.tempdir.path()).is_ok());
 		assert_eq!(
 			std::fs::read_to_string(&builder.fmt_code_path)
@@ -177,7 +177,19 @@ fn format_dir_fails_if_the_dir_cannot_be_formatted() {
 }
 
 #[test]
-fn format_dir_fails_if_the_command_execution_fails() {
+fn format_dir_fails_if_the_command_execution_fails_with_nightly_available() {
+	TestBuilder::default().with_nightly_component().with_permissionless_temp_dir().build().execute(
+		|builder| match format_dir(builder.tempdir.path()) {
+			Err(Error::IO(err)) => {
+				assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+			},
+			_ => panic!("Unexpected error"),
+		},
+	);
+}
+
+#[test]
+fn format_dir_fails_if_the_command_execution_fails_without_nightly_available() {
 	TestBuilder::default().with_permissionless_temp_dir().build().execute(
 		|builder| match format_dir(builder.tempdir.path()) {
 			Err(Error::IO(err)) => {
