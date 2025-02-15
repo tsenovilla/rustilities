@@ -14,26 +14,31 @@ use std::{path::Path, process::Command};
 /// - If neither `cargo +nightly fmt --all` nor `cargo fmt --all` successfully can be successfully
 ///   applied to the path.
 pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
-	let output = Command::new("cargo")
+	Command::new("cargo")
 		.arg("+nightly")
 		.arg("fmt")
 		.arg("--all")
 		.current_dir(path.as_ref())
-		.output()?;
-
-	if !output.status.success() {
-		let output_fallback = Command::new("cargo")
-			.arg("fmt")
-			.arg("--all")
-			.current_dir(path.as_ref())
-			.output()?;
-
-		if !output_fallback.status.success() {
-			return Err(Error::Descriptive(
-				String::from_utf8_lossy(&output_fallback.stderr).into_owned(),
-			));
-		}
-	}
-
-	Ok(())
+		.output()?
+    .and_then(|output|{
+            if output.status.success(){
+                Ok(())
+            } else {
+                Command::new("cargo")
+                    .arg("fmt")
+                    .arg("--all")
+                    .current_dir(path.as_ref())
+                    .output()
+                    .expect("If cargo fmt --all failed with IO error, that error would have been captured by cargo +nightly fmt --all previously; qed;")
+                    .and_then(|output|{
+                        if output.status.success(){
+                            Ok(())
+                        } else {
+                            Err(Error::Descriptive(
+				                        String::from_utf8_lossy(&output_fallback.stderr).into_owned(),
+			                      ))
+                        }
+            })
+            }
+    })
 }

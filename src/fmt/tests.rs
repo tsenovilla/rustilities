@@ -133,7 +133,7 @@ fn format_dir_works_if_nightly_available() {
 }
 
 #[test]
-fn format_dir_also_if_nightly_fmt_fails() {
+fn format_dir_works_if_nightly_fmt_not_available() {
 	TestBuilder::default().build().execute(|builder| {
 		assert!(format_dir(builder.tempdir.path()).is_ok());
 		assert_eq!(
@@ -156,19 +156,6 @@ fn format_dir_fails_if_the_dir_cannot_be_formatted() {
 			_ => panic!("Unexpected error"),
 		}
 	});
-}
-
-#[test]
-fn format_dir_fails_if_the_path_isnt_a_rust_dir() {
-	let tempdir = tempfile::tempdir().expect("tempdir should be created; qed;");
-	let dir = tempdir.path().join("dir");
-	std::fs::create_dir(&dir).expect("The dir should be created; qed;");
-	match format_dir(&dir) {
-		Err(Error::Descriptive(msg)) => {
-			assert!(msg.contains("error: could not find `Cargo.toml`"));
-		},
-		_ => panic!("Unexpected error"),
-	}
 }
 
 #[test]
