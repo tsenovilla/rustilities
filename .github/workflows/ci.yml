@@ -13,7 +13,7 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Check
         run: |
-          cargo check --all-features --release
+          cargo check --all-features --release --tests
 
   lint:
     runs-on: ubuntu-latest
