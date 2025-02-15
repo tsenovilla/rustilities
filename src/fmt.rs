@@ -21,7 +21,7 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 			.arg("+nightly")
 			.arg("fmt")
 			.arg("--all")
-			.current_dir(path))
+			.current_dir(path)
 			.output()
 			.map(|output| {
 				if output.status.success() {
