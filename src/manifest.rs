@@ -167,7 +167,8 @@ pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// assert!(rustilities::manifest::find_crate_name(crate_path).is_none());
 /// ```
 pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
-	Manifest::from_path(manifest_path.as_ref()).ok()?
+	Manifest::from_path(manifest_path.as_ref())
+		.ok()?
 		.package
 		.map(|package| package.name)
 }

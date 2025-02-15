@@ -203,15 +203,18 @@ fn find_workspace_manifest_doesnt_find_manifest_if_not_workspace() {
 }
 
 #[test]
-fn find_crate_name_finds_name_if_crate_manifest_path_used(){
-    TestBuilder::default().with_crate().build().execute(|builder|{
-        assert_eq!(find_crate_name(&builder.crate_manifest).expect("This should be Some; qed;"), "test");
-    });
+fn find_crate_name_finds_name_if_crate_manifest_path_used() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert_eq!(
+			find_crate_name(&builder.crate_manifest).expect("This should be Some; qed;"),
+			"test"
+		);
+	});
 }
 
 #[test]
-fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used(){
-    TestBuilder::default().build().execute(|builder|{
-        assert!(find_crate_name(&builder.tempdir.path()).is_none());
-    });
+fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
+	TestBuilder::default().build().execute(|builder| {
+		assert!(find_crate_name(&builder.tempdir.path()).is_none());
+	});
 }
