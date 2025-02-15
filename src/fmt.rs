@@ -21,7 +21,7 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 			.arg("+nightly")
 			.arg("fmt")
 			.arg("--all")
-			.current_dir(path.as_ref())
+			.current_dir(path))
 			.output()
 			.map(|output| {
 				if output.status.success() {
@@ -30,7 +30,7 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 					Command::new("cargo")
 						.arg("fmt")
 						.arg("--all")
-						.current_dir(path.as_ref())
+						.current_dir(path)
 						.output()
 						.expect(EXPECT_MSG)
 				}
