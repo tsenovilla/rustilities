@@ -2,9 +2,13 @@
 
 #[cfg(test)]
 mod tests;
+mod types;
 
+use crate::Error;
 use cargo_toml::Manifest;
 use std::path::{Path, PathBuf};
+use toml_edit::{DocumentMut, InlineTable, Item, Table};
+pub use types::ManifestDependency;
 
 /// Given a path, this function finds the manifest corresponding to the innermost crate/workspace
 /// containing that path if there's any.
@@ -49,25 +53,28 @@ use std::path::{Path, PathBuf};
 /// assert_eq!(rustilities::manifest::find_innermost_manifest(&non_crate_inner_path), None);
 /// ```
 pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
-	let mut path = path.as_ref();
-	// If the target itself contains a manifest, return it
-	let cargo_toml_path = path.join("Cargo.toml");
-	match Manifest::from_path(&cargo_toml_path) {
-		Ok(manifest) if manifest.package.is_some() || manifest.workspace.is_some() =>
-			return Some(cargo_toml_path),
-		_ => (),
-	}
-
-	// Otherwise, search in the parent dirs
-	while let Some(parent) = path.parent() {
-		let cargo_toml_path = parent.join("Cargo.toml");
+	fn do_find_innermost_manifest(path: &Path) -> Option<PathBuf> {
+		let mut path = path;
+		// If the target itself contains a manifest, return it
+		let cargo_toml_path = path.join("Cargo.toml");
 		match Manifest::from_path(&cargo_toml_path) {
 			Ok(manifest) if manifest.package.is_some() || manifest.workspace.is_some() =>
 				return Some(cargo_toml_path),
-			_ => path = parent,
+			_ => (),
 		}
+
+		// Otherwise, search in the parent dirs
+		while let Some(parent) = path.parent() {
+			let cargo_toml_path = parent.join("Cargo.toml");
+			match Manifest::from_path(&cargo_toml_path) {
+				Ok(manifest) if manifest.package.is_some() || manifest.workspace.is_some() =>
+					return Some(cargo_toml_path),
+				_ => path = parent,
+			}
+		}
+		None
 	}
-	None
+	do_find_innermost_manifest(path.as_ref())
 }
 
 /// Given a path, this function finds the manifest corresponding to the workspace
@@ -119,23 +126,26 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// );
 /// ```
 pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
-	let mut path = path.as_ref();
-	// If the target itself contains a manifest, return it
-	let cargo_toml_path = path.join("Cargo.toml");
-	match Manifest::from_path(&cargo_toml_path) {
-		Ok(manifest) if manifest.workspace.is_some() => return Some(cargo_toml_path),
-		_ => (),
-	}
-
-	// Otherwise, search in the parent dirs
-	while let Some(parent) = path.parent() {
-		let cargo_toml_path = parent.join("Cargo.toml");
+	fn do_find_workspace_manifest(path: &Path) -> Option<PathBuf> {
+		let mut path = path;
+		// If the target itself contains a manifest, return it
+		let cargo_toml_path = path.join("Cargo.toml");
 		match Manifest::from_path(&cargo_toml_path) {
 			Ok(manifest) if manifest.workspace.is_some() => return Some(cargo_toml_path),
-			_ => path = parent,
+			_ => (),
 		}
+
+		// Otherwise, search in the parent dirs
+		while let Some(parent) = path.parent() {
+			let cargo_toml_path = parent.join("Cargo.toml");
+			match Manifest::from_path(&cargo_toml_path) {
+				Ok(manifest) if manifest.workspace.is_some() => return Some(cargo_toml_path),
+				_ => path = parent,
+			}
+		}
+		None
 	}
-	None
+	do_find_workspace_manifest(path.as_ref())
 }
 
 /// Given a path, this function tries to determine if it points to a crate's manifest and if that's
@@ -171,4 +181,62 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 		.ok()?
 		.package
 		.map(|package| package.name)
+}
+
+pub fn add_crate_to_dependencies<P: AsRef<Path>>(
+	manifest_path: P,
+	crate_name: &str,
+	dependency: ManifestDependency,
+) -> Result<(), Error> {
+	fn do_add_crate_to_dependencies(
+		dependencies: &mut Table,
+		crate_name: &str,
+		dependency: ManifestDependency,
+	) {
+		let mut crate_declaration = InlineTable::new();
+		match dependency {
+			ManifestDependency::Workspace => {
+				crate_declaration.insert(
+					"workspace",
+					toml_edit::value(true)
+						.into_value()
+						.expect("true is bool, so value(true) is Value::Boolean;qed;"),
+				);
+				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+			},
+			ManifestDependency::External { version } => {
+				crate_declaration.insert(
+					"version",
+					toml_edit::value(version.to_owned())
+						.into_value()
+						.expect("version is String, so value(version) is Value::String; qed;"),
+				);
+				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+			},
+			ManifestDependency::Local { relative_path } => {
+				crate_declaration.insert(
+					"path",
+					toml_edit::value(relative_path.to_string_lossy().into_owned())
+						.into_value()
+						.expect(
+						"relative_path is String, so value(relative_path) is Value::String; qed;",
+					),
+				);
+				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+			},
+		}
+	}
+
+	let mut doc = std::fs::read_to_string(manifest_path.as_ref())?.parse::<DocumentMut>()?;
+	if let Some(Item::Table(dependencies)) = doc.get_mut("dependencies") {
+		do_add_crate_to_dependencies(dependencies, crate_name, dependency);
+	} else {
+		let mut dependencies = Table::new();
+		do_add_crate_to_dependencies(&mut dependencies, crate_name, dependency);
+		doc.insert("dependencies", Item::Table(dependencies));
+	}
+
+	std::fs::write(manifest_path, doc.to_string())?;
+
+	Ok(())
 }
