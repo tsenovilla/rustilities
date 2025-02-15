@@ -1,0 +1,13 @@
+name: Init
+description: An action to initialize other actions
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Toolchain
+      uses: crusty-pie/toolchain@v1
+    - name: Cache
+      uses: Swatinem/rust-cache@v2.7.3
+      with:
+        cache-on-failure: true 
