@@ -6,6 +6,8 @@ mod tests;
 use crate::Error;
 use std::{path::Path, process::Command};
 
+const expect_msg: &str = "If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;";
+
 /// Given a path, this function firstly tries to:
 /// - Apply `cargo +nightly fmt --all` to it.
 /// - In case of failure, it tries to apply `cargo fmt --all` to it.
@@ -22,23 +24,26 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 		.output()
 		.and_then(|output| {
 			if output.status.success() {
-				Ok(())
+				Ok(output)
 			} else {
-				Command::new("cargo")
+				Ok(Command::new("cargo")
 					.arg("fmt")
 					.arg("--all")
 					.current_dir(path.as_ref())
 					.output()
-					.and_then(|output| {
-						if output.status.success() {
-							Ok(())
-						} else {
-							Err(Error::Descriptive(
-								String::from_utf8_lossy(&output.stderr).into_owned(),
-							))
-						}
-					})
-					.expect("If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;")
+					.expect(expect_msg))
 			}
-		})?
+		})
+		.map_or_else(
+			|err| err.into(),
+			|output| {
+				if output.status.success() {
+					Ok(())
+				} else {
+					Err(Error::Descriptive(
+						String::from_utf8_lossy(&output_fallback.stderr).into_owned(),
+					))
+				}
+			},
+		)
 }
