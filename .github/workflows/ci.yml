@@ -15,7 +15,7 @@ jobs:
         run: |
           cargo check --all-features --release --tests
 
-  lint:
+  fmt:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,13 +26,19 @@ jobs:
       - name: Fmt
         run: |
           cargo +nightly fmt --all --check
+  clippy:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: "./.github/actions/init"
       - name: Clippy
         run: |
           cargo clippy --all-features -- -D warnings
-
   test:
     runs-on: ubuntu-latest
-    needs: [check, lint]
+    needs: [check, fmt]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
