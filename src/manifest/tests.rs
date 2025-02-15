@@ -62,7 +62,9 @@ impl TestBuilder {
         "#,
 			)
 			.expect("The manifest should be writable; qed;");
-			self.workspace_manifest = workspace_manifest;
+			self.workspace_manifest = workspace_manifest.clone();
+			self.non_crate_path
+				.extend_from_slice(&[self.tempdir.path(), workspace_manifest]);
 		}
 		if self.with_crate {
 			let crate_path = self.tempdir.path().join("crate");
