@@ -22,16 +22,16 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 		.arg("--all")
 		.current_dir(path.as_ref())
 		.output()
-		.and_then(|output| {
+		.map(|output| {
 			if output.status.success() {
-				Ok(output)
+				output
 			} else {
-				Ok(Command::new("cargo")
+				Command::new("cargo")
 					.arg("fmt")
 					.arg("--all")
 					.current_dir(path.as_ref())
 					.output()
-					.expect(EXPECT_MSG))
+					.expect(EXPECT_MSG)
 			}
 		})
 		.map_or_else(
