@@ -113,7 +113,10 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 ///         "#,
 ///  ).unwrap();
 //
-/// assert_eq!(rustilities::manifest::find_workspace_manifest(&main_path), Some(workspace_manifest_path));
+/// assert_eq!(
+///     rustilities::manifest::find_workspace_manifest(&main_path),
+///     Some(workspace_manifest_path)
+/// );
 /// ```
 pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 	let mut path = path.as_ref();
