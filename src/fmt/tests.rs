@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 
 use super::*;
-use std::{
-	fs::{File, Permissions},
-	io::ErrorKind,
-	os::unix::fs::PermissionsExt,
-	path::PathBuf,
-};
+use std::{fs::File, io::ErrorKind, path::PathBuf};
 use tempfile::TempDir;
 
 struct TestBuilder {
 	tempdir: TempDir,
 	with_invalid_code: bool,
-	with_permissionless_temp_dir: bool,
 	with_nightly_component: bool,
 	fmt_code_path: PathBuf,
 	not_fmt_code_path: PathBuf,
@@ -66,7 +60,6 @@ pub enum A {
 		Self {
 			tempdir,
 			with_invalid_code: false,
-			with_permissionless_temp_dir: false,
 			with_nightly_component: false,
 			fmt_code_path,
 			not_fmt_code_path,
@@ -77,11 +70,6 @@ pub enum A {
 impl TestBuilder {
 	fn with_invalid_code(mut self) -> Self {
 		self.with_invalid_code = true;
-		self
-	}
-
-	fn with_permissionless_temp_dir(mut self) -> Self {
-		self.with_permissionless_temp_dir = true;
 		self
 	}
 
@@ -98,12 +86,6 @@ impl TestBuilder {
 		} else {
 			std::fs::write(&self.not_fmt_code_path, "pub enum A {A,B,C}")
 				.expect("The file should be writable; qed;");
-		}
-
-		// Revoke tempdir permissions in case that's needed
-		if self.with_permissionless_temp_dir {
-			std::fs::set_permissions(self.tempdir.path(), Permissions::from_mode(0o000))
-				.expect("temp dir permissions should be configurable; qed;");
 		}
 
 		// Install the nightly fmt component if needed, or remove it if not needed
@@ -177,25 +159,38 @@ fn format_dir_fails_if_the_dir_cannot_be_formatted() {
 }
 
 #[test]
-fn format_dir_fails_if_the_command_execution_fails_with_nightly_available() {
-	TestBuilder::default().with_nightly_component().with_permissionless_temp_dir().build().execute(
-		|builder| match format_dir(builder.tempdir.path()) {
-			Err(Error::IO(err)) => {
-				assert_eq!(err.kind(), ErrorKind::PermissionDenied);
-			},
-			_ => panic!("Unexpected error"),
+fn format_dir_fails_if_the_path_isnt_a_rust_dir() {
+	let tempdir = tempfile::tempdir().expect("tempdir should be created; qed;");
+	let dir = tempdir.path().join("dir");
+	std::fs::create_dir(&dir).expect("The dir should be created; qed;");
+	match format_dir(&dir) {
+		Err(Error::Descriptive(msg)) => {
+			assert!(msg.contains("error: could not find `Cargo.toml`"));
 		},
-	);
+		_ => panic!("Unexpected error"),
+	}
 }
 
 #[test]
-fn format_dir_fails_if_the_command_execution_fails_without_nightly_available() {
-	TestBuilder::default().with_permissionless_temp_dir().build().execute(
-		|builder| match format_dir(builder.tempdir.path()) {
+fn format_dir_fails_with_nightly_available_if_io_error() {
+	TestBuilder::default().with_nightly_component().build().execute(|builder| {
+		match format_dir(builder.tempdir.path().join("dir")) {
 			Err(Error::IO(err)) => {
-				assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+				assert_eq!(err.kind(), ErrorKind::NotFound);
 			},
 			_ => panic!("Unexpected error"),
-		},
-	);
+		}
+	});
+}
+
+#[test]
+fn format_dir_fails_without_nightly_available_if_io_error() {
+	TestBuilder::default().build().execute(|builder| {
+		match format_dir(builder.tempdir.path().join("dir")) {
+			Err(Error::IO(err)) => {
+				assert_eq!(err.kind(), ErrorKind::NotFound);
+			},
+			_ => panic!("Unexpected error"),
+		}
+	});
 }
