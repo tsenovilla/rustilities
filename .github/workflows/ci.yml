@@ -59,19 +59,21 @@ jobs:
         run: |
           cargo llvm-cov \
           --features paths \
-          --lcov \
+          --json \
+          --codecov \
           --ignore-filename-regex "/tests\.rs$" \
-          --output-path lcov_no_fmt.info
+          --output-path cov_no_fmt.json
           cargo llvm-cov \
           --features fmt \
-          --lcov \
+          --json \
+          --codecov \
           --ignore-filename-regex "/tests\.rs$" \
-          --output-path lcov_fmt.info \
+          --output-path cov_fmt.json \
           -- \
           --test-threads=1
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov_no_fmt.info, lcov_fmt.info
+          files: cov_no_fmt.json, cov_fmt.json
           fail_ci_if_error: true
