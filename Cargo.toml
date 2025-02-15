@@ -9,12 +9,14 @@ description = "This crate offers a few utils for Rust development"
 documentation = "https://docs.rs/rustilities"
 
 [dependencies]
+cargo_toml = { version = "0.21.0", optional = true }
 thiserror = "2.0.11"
 
 [features]
 full = []
 paths = []
 fmt = []
+manifest = ["cargo_toml"]
 
 [dev-dependencies]
 tempfile = "3.16.0"

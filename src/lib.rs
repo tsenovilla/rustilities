@@ -12,4 +12,8 @@ pub mod paths;
 #[cfg_attr(docsrs, doc(cfg(any(feature = "fmt", feature = "full"))))]
 pub mod fmt;
 
+#[cfg(any(feature = "manifest", feature = "full"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "manifest", feature = "full"))))]
+pub mod manifest;
+
 pub use error::Error;
