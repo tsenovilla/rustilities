@@ -103,7 +103,7 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 ///  ).unwrap();
 ///
 /// std::fs::write(
-///        &manifest_path,
+///        &workspace_manifest_path,
 ///        r#"
 ///         [workspace]
 ///         resolver = "2"
