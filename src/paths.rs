@@ -20,12 +20,15 @@ use std::path::{Component, Path, PathBuf};
 /// assert_eq!(rustilities::paths::prefix_with_current_dir(path2), path2);
 /// ```
 pub fn prefix_with_current_dir<P: AsRef<Path>>(path: P) -> PathBuf {
-	let components = path.as_ref().components().collect::<Vec<Component>>();
-	if !components.is_empty() {
-		// If the first component is a normal component, we prefix the path with the current dir
-		if let Component::Normal(_) = components[0] {
-			return <Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).join(path);
+	fn do_prefix_with_current_dir(path: &Path) -> PathBuf {
+		let components = path.components().collect::<Vec<Component>>();
+		if !components.is_empty() {
+			// If the first component is a normal component, we prefix the path with the current dir
+			if let Component::Normal(_) = components[0] {
+				return <Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).join(path);
+			}
 		}
+		path.to_path_buf()
 	}
-	path.as_ref().to_path_buf()
+	do_prefix_with_current_dir(path.as_ref())
 }
