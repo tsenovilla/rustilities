@@ -3,10 +3,8 @@ channel = "1.84.0"
 components = [
 	"cargo",
 	"clippy",
-	"rust-analyzer",
 	"rust-src",
 	"rust-std",
 	"rustc",
 	"rustfmt",
-  "llvm-tools-preview"
 ]

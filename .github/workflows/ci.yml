@@ -40,59 +40,38 @@ jobs:
       - uses: crusty-pie/toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        env:
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-Cinstrument-coverage"
-          LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
         run: |
           cargo test --features paths
           # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
           cargo test --features fmt -- --test-threads=1
-      - name: Upload coverage profraw files
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-files
-          path: coverage*
-      - name: Upload target dir
-        uses: actions/upload-artifact@v4
-        with:
-          name: target
-          path: ./target/
-
 
   coverage:
     runs-on: ubuntu-latest
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: crusty-pie/toolchain@v1
+      - name: Install Rust toolchain
+        run: rustup toolchain install nightly --component llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
-      - name: Install grcov
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
         run: |
-          cargo install grcov
-      - name: Download coverage profraw files
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-files
-          path: .
-      - name: Download target dir
-        uses: actions/download-artifact@v4
-        with:
-          name: target
-          path: ./target/
-      - name: Generate coverage report
-        run: |
-          grcov . \
-            -s . \
-            --binary-path ./target/debug/ \
-            -t lcov \
-            --branch \
-            --ignore-not-existing \
-            --ignore "**/tests.rs" \
-            -o coverage.lcov
+          cargo llvm-cov \
+          --features paths \
+          --lcov \
+          --ignore-filename-regex "/tests\.rs$"
+          --output-path lcov_no_fmt.info
+          cargo llvm-cov \
+          --features fmt \
+          --lcov \
+          --ignore-filename-regex "/tests\.rs$"
+          --output-path lcov_fmt.info\
+          -- \
+          --test-threads=1
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: coverage/lcov.info
+          files: lcov_nofmt.info, lcov_fmt.info
           fail_ci_if_error: true
