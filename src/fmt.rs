@@ -19,7 +19,7 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 		.arg("fmt")
 		.arg("--all")
 		.current_dir(path.as_ref())
-		.output()?
+		.output()
 		.and_then(|output| {
 			if output.status.success() {
 				Ok(())
@@ -40,5 +40,5 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 					})
 					.expect("If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;")
 			}
-		})
+		})?
 }
