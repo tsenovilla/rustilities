@@ -59,13 +59,11 @@ jobs:
         run: |
           cargo llvm-cov \
           --features paths \
-          --json \
           --codecov \
           --ignore-filename-regex "/tests\.rs$" \
           --output-path cov_no_fmt.json
           cargo llvm-cov \
           --features fmt \
-          --json \
           --codecov \
           --ignore-filename-regex "/tests\.rs$" \
           --output-path cov_fmt.json \
