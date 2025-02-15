@@ -25,16 +25,16 @@ use std::path::{Path, PathBuf};
 /// File::create(&main_path).unwrap();
 /// File::create(&lib_path).unwrap();
 /// std::fs::write(
-/// 	    &manifest_path,
-/// 			r#"
-///         [package]
-///         name = "test"
-///         version = "0.1.0"
-///         edition = "2021"
+///     &manifest_path,
+///     r#"
+///      [package]
+///      name = "test"
+///      version = "0.1.0"
+///      edition = "2021"
 ///
-///         [dependencies]
-///     "#,
-/// 	).unwrap();
+///      [dependencies]
+///      "#,
+///  ).unwrap();
 ///
 /// assert_eq!(rustilities::manifest::find_innermost_manifest(&main_path), Some(manifest_path.clone()));
 /// assert_eq!(rustilities::manifest::find_innermost_manifest(&lib_path), Some(manifest_path.clone()));
@@ -91,30 +91,29 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// File::create(&main_path).unwrap();
 /// File::create(&lib_path).unwrap();
 /// std::fs::write(
-/// 	    &manifest_path,
-/// 			r#"
-///         [package]
-///         name = "test"
-///         version = "0.1.0"
-///         edition = "2021"
+///     &manifest_path,
+///     r#"
+///      [package]
+///      name = "test"
+///      version = "0.1.0"
+///      edition = "2021"
 ///
-///         [dependencies]
-///     "#,
-/// 	).unwrap();
+///      [dependencies]
+///      "#,
+///  ).unwrap();
 ///
 /// std::fs::write(
-/// 	    &workspace_manifest_path,
-/// 			r#"
+///        &manifest_path,
+///        r#"
 ///         [workspace]
 ///         resolver = "2"
 ///         members = ["crate"]
 ///
 ///         [dependencies]
-///     "#,
-/// 	).unwrap();
+///         "#,
+///  ).unwrap();
 //
-/// assert_eq!(rustilities::manifest::find_workspace_manifest(&main_path),
-/// Some(workspace_manifest_path));
+/// assert_eq!(rustilities::manifest::find_workspace_manifest(&main_path), Some(workspace_manifest_path));
 /// ```
 pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 	let mut path = path.as_ref();
