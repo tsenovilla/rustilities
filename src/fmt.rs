@@ -6,7 +6,7 @@ mod tests;
 use crate::Error;
 use std::{path::Path, process::Command};
 
-const expect_msg: &str = "If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;";
+const EXPECT_MSG: &str = "If cargo fmt were to fail with an IO error, it would have already failed with 'cargo +nightly fmt --all'; qed;";
 
 /// Given a path, this function firstly tries to:
 /// - Apply `cargo +nightly fmt --all` to it.
@@ -31,18 +31,16 @@ pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 					.arg("--all")
 					.current_dir(path.as_ref())
 					.output()
-					.expect(expect_msg))
+					.expect(EXPECT_MSG))
 			}
 		})
 		.map_or_else(
-			|err| err.into(),
+			|err| Err(err.into()),
 			|output| {
 				if output.status.success() {
 					Ok(())
 				} else {
-					Err(Error::Descriptive(
-						String::from_utf8_lossy(&output_fallback.stderr).into_owned(),
-					))
+					Err(Error::Descriptive(String::from_utf8_lossy(&output.stderr).into_owned()))
 				}
 			},
 		)
