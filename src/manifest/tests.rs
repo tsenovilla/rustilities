@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
 use super::*;
-use std::fs::File;
+use std::{
+	fs::{File, Permissions},
+	io::ErrorKind,
+	os::unix::fs::PermissionsExt,
+};
 use tempfile::TempDir;
 
 struct TestBuilder {
@@ -13,6 +17,7 @@ struct TestBuilder {
 	tempdir_is_workspace: bool,
 	with_crate: bool,
 	with_non_crate: bool,
+	with_read_only_dir: bool,
 }
 
 impl Default for TestBuilder {
@@ -27,6 +32,7 @@ impl Default for TestBuilder {
 			tempdir_is_workspace: false,
 			with_crate: false,
 			with_non_crate: false,
+			with_read_only_dir: false,
 		}
 	}
 }
@@ -47,6 +53,11 @@ impl TestBuilder {
 		self
 	}
 
+	fn with_read_only_dir(mut self) -> Self {
+		self.with_read_only_dir = true;
+		self
+	}
+
 	fn build(mut self) -> Self {
 		if self.tempdir_is_workspace {
 			let workspace_manifest = self.tempdir.path().join("Cargo.toml");
@@ -54,11 +65,11 @@ impl TestBuilder {
 			std::fs::write(
 				&workspace_manifest,
 				r#"
-            [workspace]
-            resolver = "2"
-            members = ["crate"]
+[workspace]
+resolver = "2"
+members = ["crate"]
 
-            [dependencies]
+[dependencies]
         "#,
 			)
 			.expect("The manifest should be writable; qed;");
@@ -79,15 +90,17 @@ impl TestBuilder {
 			std::fs::write(
 				&manifest_path,
 				r#"
-            [package]
-            name = "test"
-            version = "0.1.0"
-            edition = "2021"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
 
-            [dependencies]
+[dependencies]
         "#,
 			)
 			.expect("The manifest should be writable; qed;");
+			std::fs::write(&main_path, "use std::fs;")
+				.expect("The main.rs file should be writable; qed;");
 			self.crate_manifest = manifest_path.clone();
 			self.crate_paths.extend_from_slice(&[
 				crate_path,
@@ -104,6 +117,12 @@ impl TestBuilder {
 			std::fs::create_dir_all(&non_crate_inner_path).expect("This should be created; qed;");
 			self.non_crate_paths.extend_from_slice(&[non_crate_path, non_crate_inner_path]);
 		}
+
+		if self.with_read_only_dir {
+			std::fs::set_permissions(self.tempdir.path(), Permissions::from_mode(0o444))
+				.expect("temp dir permissions should be configurable; qed;");
+		}
+
 		self
 	}
 
@@ -217,4 +236,128 @@ fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
 	TestBuilder::default().build().execute(|builder| {
 		assert!(find_crate_name(&builder.tempdir.path()).is_none());
 	});
+}
+
+#[test]
+fn add_crate_to_dependencies_adds_workspace_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::workspace()
+		)
+		.is_ok());
+
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dependency = { workspace = true }
+        "#
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_adds_external_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::external("1.0.0")
+		)
+		.is_ok());
+
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dependency = { version = "1.0.0" }
+        "#
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_adds_local_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::local(Path::new("../path"))
+		)
+		.is_ok());
+
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dependency = { path = "../path" }
+        "#
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_fails_if_manifest_path_isnt_readable() {
+	TestBuilder::default().build().execute(|builder| {
+		assert!(matches!(
+			add_crate_to_dependencies(
+			builder.tempdir.path().join("unexisting/path/Cargo.toml"),
+				"dependency",
+				ManifestDependencyConfig::workspace()
+			),
+			Err(Error::IO(err)) if err.kind() == ErrorKind::NotFound
+		));
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_parsed() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert!(matches!(
+			add_crate_to_dependencies(
+				&builder.crate_paths[3], // main.rs path
+				"dependency",
+				ManifestDependencyConfig::workspace()
+			),
+			Err(Error::TomlEdit(_))
+		));
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_written() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_read_only_dir()
+		.build()
+		.execute(|builder| {
+			assert!(matches!(
+				add_crate_to_dependencies(
+				&builder.workspace_manifest,
+					"dependency",
+					ManifestDependencyConfig::workspace()
+				),
+				Err(Error::IO(err)) if err.kind() == ErrorKind::PermissionDenied
+			));
+		});
 }

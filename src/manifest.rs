@@ -8,7 +8,7 @@ use crate::Error;
 use cargo_toml::Manifest;
 use std::path::{Path, PathBuf};
 use toml_edit::{DocumentMut, InlineTable, Item, Table};
-pub use types::ManifestDependency;
+pub use types::ManifestDependencyConfig;
 
 /// Given a path, this function finds the manifest corresponding to the innermost crate/workspace
 /// containing that path if there's any.
@@ -31,12 +31,12 @@ pub use types::ManifestDependency;
 /// std::fs::write(
 ///     &manifest_path,
 ///     r#"
-///      [package]
-///      name = "test"
-///      version = "0.1.0"
-///      edition = "2021"
+/// [package]
+/// name = "test"
+/// version = "0.1.0"
+/// edition = "2021"
 ///
-///      [dependencies]
+/// [dependencies]
 ///      "#,
 ///  ).unwrap();
 ///
@@ -100,23 +100,23 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// std::fs::write(
 ///     &manifest_path,
 ///     r#"
-///      [package]
-///      name = "test"
-///      version = "0.1.0"
-///      edition = "2021"
+/// [package]
+/// name = "test"
+/// version = "0.1.0"
+/// edition = "2021"
 ///
-///      [dependencies]
+/// [dependencies]
 ///      "#,
 ///  ).unwrap();
 ///
 /// std::fs::write(
 ///        &workspace_manifest_path,
 ///        r#"
-///         [workspace]
-///         resolver = "2"
-///         members = ["crate"]
+/// [workspace]
+/// resolver = "2"
+/// members = ["crate"]
 ///
-///         [dependencies]
+/// [dependencies]
 ///         "#,
 ///  ).unwrap();
 //
@@ -164,12 +164,12 @@ pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// std::fs::write(
 ///     &manifest_path,
 ///     r#"
-///      [package]
-///      name = "test"
-///      version = "0.1.0"
-///      edition = "2021"
+/// [package]
+/// name = "test"
+/// version = "0.1.0"
+/// edition = "2021"
 ///
-///      [dependencies]
+/// [dependencies]
 ///      "#,
 ///  ).unwrap();
 ///
@@ -185,35 +185,35 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 
 pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 	manifest_path: P,
-	crate_name: &str,
-	dependency: ManifestDependency,
+	dependency_name: &str,
+	dependency_config: ManifestDependencyConfig,
 ) -> Result<(), Error> {
 	fn do_add_crate_to_dependencies(
 		dependencies: &mut Table,
-		crate_name: &str,
-		dependency: ManifestDependency,
+		dependency_name: &str,
+		dependency_config: ManifestDependencyConfig,
 	) {
 		let mut crate_declaration = InlineTable::new();
-		match dependency {
-			ManifestDependency::Workspace => {
+		match dependency_config {
+			ManifestDependencyConfig::Workspace => {
 				crate_declaration.insert(
 					"workspace",
 					toml_edit::value(true)
 						.into_value()
 						.expect("true is bool, so value(true) is Value::Boolean;qed;"),
 				);
-				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
-			ManifestDependency::External { version } => {
+			ManifestDependencyConfig::External { version } => {
 				crate_declaration.insert(
 					"version",
 					toml_edit::value(version.to_owned())
 						.into_value()
 						.expect("version is String, so value(version) is Value::String; qed;"),
 				);
-				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
-			ManifestDependency::Local { relative_path } => {
+			ManifestDependencyConfig::Local { relative_path } => {
 				crate_declaration.insert(
 					"path",
 					toml_edit::value(relative_path.to_string_lossy().into_owned())
@@ -222,17 +222,17 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 						"relative_path is String, so value(relative_path) is Value::String; qed;",
 					),
 				);
-				dependencies.insert(crate_name, toml_edit::value(crate_declaration));
+				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
 		}
 	}
 
 	let mut doc = std::fs::read_to_string(manifest_path.as_ref())?.parse::<DocumentMut>()?;
 	if let Some(Item::Table(dependencies)) = doc.get_mut("dependencies") {
-		do_add_crate_to_dependencies(dependencies, crate_name, dependency);
+		do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
 	} else {
 		let mut dependencies = Table::new();
-		do_add_crate_to_dependencies(&mut dependencies, crate_name, dependency);
+		do_add_crate_to_dependencies(&mut dependencies, dependency_name, dependency_config);
 		doc.insert("dependencies", Item::Table(dependencies));
 	}
 
