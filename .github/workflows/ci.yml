@@ -73,5 +73,5 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov_nofmt.info, lcov_fmt.info
+          files: lcov_no_fmt.info, lcov_fmt.info
           fail_ci_if_error: true
