@@ -137,3 +137,37 @@ pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 	}
 	None
 }
+
+/// Given a path, this function tries to determine if it points to a crate's manifest and if that's
+/// the case, returns the crate's name.
+///
+/// # Examples
+/// ```
+/// use std::fs::File;
+///
+/// let tempdir = tempfile::tempdir().unwrap();
+///
+/// let crate_path = tempdir.path().join("crate");
+/// let manifest_path = crate_path.join("Cargo.toml");
+/// std::fs::create_dir_all(&crate_path).unwrap();
+/// File::create(&manifest_path).unwrap();
+/// std::fs::write(
+///     &manifest_path,
+///     r#"
+///      [package]
+///      name = "test"
+///      version = "0.1.0"
+///      edition = "2021"
+///
+///      [dependencies]
+///      "#,
+///  ).unwrap();
+///
+/// assert_eq!(rustilities::manifest::find_crate_name(manifest_path).unwrap(), "test");
+/// assert!(rustilities::manifest::find_crate_name(crate_path).is_none());
+/// ```
+pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
+	Manifest::from_path(manifest_path.as_ref()).ok()?
+		.package
+		.map(|package| package.name)
+}

@@ -9,4 +9,7 @@ pub enum Error {
 	IO(#[from] std::io::Error),
 	#[error("{0}")]
 	Descriptive(String),
+	#[cfg(any(feature = "manifest", feature = "full"))]
+	#[error("cargo_toml error: {0}")]
+	CargoToml(#[from] cargo_toml::Error),
 }
