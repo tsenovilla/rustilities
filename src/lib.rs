@@ -2,7 +2,7 @@
 
 //! # Description
 //!
-//! This crate offers several functionalities (not necessarily related to each other). 
+//! This crate offers several functionalities (not necessarily related to each other).
 //! Please refer to the specific documentation for each part of the crate to learn more about it.
 //!
 //! # Features
