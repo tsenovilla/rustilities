@@ -1,7 +1,9 @@
+[![GitHub](https://img.shields.io/github/forks/tsenovilla/rustilities.svg?style=social)](https://github.com/tsenovilla/rustilities)
 [![CI Workflow](https://github.com/tsenovilla/rustilities/actions/workflows/ci.yml/badge.svg)](https://github.com/tsenovilla/rustilities/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/tsenovilla/rustilities/branch/main/graph/badge.svg)](https://codecov.io/gh/tsenovilla/rustilities)
 [![Crates.io](https://img.shields.io/crates/v/rustilities.svg)](https://crates.io/crates/rustilities)
-[![GitHub](https://img.shields.io/github/stars/tsenovilla/rustilities.svg?style=social)](https://github.com/tsenovilla/rustilities)
+[![docs.rs](https://docs.rs/rustilities/badge.svg)](https://docs.rs/rustilities)
+
 # Description 📖📚
 
 This crate offers several functionalities that are not necessarily related to each other. 
