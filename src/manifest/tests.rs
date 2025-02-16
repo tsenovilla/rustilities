@@ -17,7 +17,7 @@ struct TestBuilder {
 	tempdir_is_workspace: bool,
 	with_crate: bool,
 	with_non_crate: bool,
-	with_read_only_dir: bool,
+	with_read_only_manifest: bool,
 }
 
 impl Default for TestBuilder {
@@ -32,7 +32,7 @@ impl Default for TestBuilder {
 			tempdir_is_workspace: false,
 			with_crate: false,
 			with_non_crate: false,
-			with_read_only_dir: false,
+			with_read_only_manifest: false,
 		}
 	}
 }
@@ -53,8 +53,8 @@ impl TestBuilder {
 		self
 	}
 
-	fn with_read_only_dir(mut self) -> Self {
-		self.with_read_only_dir = true;
+	fn with_read_only_manifest(mut self) -> Self {
+		self.with_read_only_manifest = true;
 		self
 	}
 
@@ -73,6 +73,12 @@ members = ["crate"]
         "#,
 			)
 			.expect("The manifest should be writable; qed;");
+
+			if self.with_read_only_manifest {
+				std::fs::set_permissions(&workspace_manifest, Permissions::from_mode(0o444))
+					.expect("manifest permissions should be configurable; qed;");
+			}
+
 			self.workspace_manifest = workspace_manifest.clone();
 			self.non_crate_paths
 				.extend_from_slice(&[self.tempdir.path().to_path_buf(), workspace_manifest]);
@@ -101,6 +107,11 @@ edition = "2021"
 			.expect("The manifest should be writable; qed;");
 			std::fs::write(&main_path, "use std::fs;")
 				.expect("The main.rs file should be writable; qed;");
+
+			if self.with_read_only_manifest {
+				std::fs::set_permissions(&manifest_path, Permissions::from_mode(0o444))
+					.expect("manifest permissions should be configurable; qed;");
+			}
 			self.crate_manifest = manifest_path.clone();
 			self.crate_paths.extend_from_slice(&[
 				crate_path,
@@ -116,11 +127,6 @@ edition = "2021"
 			let non_crate_inner_path = non_crate_path.join("somewhere_deeper");
 			std::fs::create_dir_all(&non_crate_inner_path).expect("This should be created; qed;");
 			self.non_crate_paths.extend_from_slice(&[non_crate_path, non_crate_inner_path]);
-		}
-
-		if self.with_read_only_dir {
-			std::fs::set_permissions(self.tempdir.path(), Permissions::from_mode(0o444))
-				.expect("temp dir permissions should be configurable; qed;");
 		}
 
 		self
@@ -317,6 +323,27 @@ dependency = { path = "../path" }
 }
 
 #[test]
+fn add_crate_to_dependencies_works_for_empty_manifest() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		std::fs::write(&builder.crate_manifest, "").expect("Manifest should be writable; qed;");
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::workspace()
+		)
+		.is_ok());
+
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"[dependencies]
+dependency = { workspace = true }
+"#
+		);
+	});
+}
+
+#[test]
 fn add_crate_to_dependencies_fails_if_manifest_path_isnt_readable() {
 	TestBuilder::default().build().execute(|builder| {
 		assert!(matches!(
@@ -348,7 +375,7 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_parsed() {
 fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_written() {
 	TestBuilder::default()
 		.tempdir_is_workspace()
-		.with_read_only_dir()
+		.with_read_only_manifest()
 		.build()
 		.execute(|builder| {
 			assert!(matches!(
