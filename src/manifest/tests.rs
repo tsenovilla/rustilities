@@ -375,7 +375,12 @@ fn add_crate_to_dependencies_works_for_empty_manifest() {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
 			"dependency",
-			ManifestDependencyConfig::new(ManifestDependencyOrigin::workspace(), true, vec![], false)
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::workspace(),
+				true,
+				vec![],
+				false
+			)
 		)
 		.is_ok());
 		assert_eq!(
