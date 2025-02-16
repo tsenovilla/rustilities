@@ -183,6 +183,90 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 		.map(|package| package.name)
 }
 
+/// Given a manifest file path, this function adds a dependency to the `dependencies` section of the
+/// manifest based on the provided config.
+///
+/// # Errors
+///
+/// - If the path cannot be read.
+/// - If the path doesn't correspond to a valid Rust manifes (empty files are valid).
+/// - If the path cannot overwritten.
+///
+/// # Examples
+///
+/// ```
+/// use std::{fs::File, io::ErrorKind};
+/// use rustilities::{Error, manifest::{ManifestDependencyOrigin, ManifestDependencyConfig}};
+///
+/// let tempdir = tempfile::tempdir().unwrap();
+/// let manifest_path = tempdir.path().join("Cargo.toml");
+/// std::fs::write(
+///     &manifest_path,
+///     r#"
+/// [package]
+/// name = "test"
+/// version = "0.1.0"
+/// edition = "2021"
+///
+/// [dependencies]
+/// "#,
+/// ).unwrap();
+///
+/// // Add some dependencies
+/// assert!(rustilities::manifest::add_crate_to_dependencies(
+///     &manifest_path,
+///     "syn",
+///     ManifestDependencyConfig::new(
+///         ManifestDependencyOrigin::workspace(),
+///         false, // default_features = false
+///         vec![], // features
+///         false // optional = false
+///     )
+/// )
+/// .is_ok());
+///
+/// assert!(rustilities::manifest::add_crate_to_dependencies(
+///     &manifest_path,
+///     "serde",
+///     ManifestDependencyConfig::new(
+///         ManifestDependencyOrigin::crates_io("1.0.0"),
+///         true, // default_features = true
+///         vec!["derive"], // features
+///         false // optional = false
+///     )
+/// )
+/// .is_ok());
+///
+/// // Check that the dependency was added to the manifest
+/// assert_eq!(
+///     std::fs::read_to_string(&manifest_path).unwrap(),
+///     r#"
+/// [package]
+/// name = "test"
+/// version = "0.1.0"
+/// edition = "2021"
+///
+/// [dependencies]
+/// syn = { workspace = true, default-features = false }
+/// serde = { version = "1.0.0", features = ["derive"] }
+/// "#,
+/// );
+///
+/// // Fails in unexisting file
+/// assert!(matches!(
+///     rustilities::manifest::add_crate_to_dependencies(
+///         tempdir.path().join("file.txt"),
+///         "syn",
+///         ManifestDependencyConfig::new(
+///             ManifestDependencyOrigin::workspace(),
+///             false,
+///             vec![],
+///             false
+///         )
+///     ),
+///     Err(Error::IO(err)) if err.kind() == ErrorKind::NotFound
+/// ));
+/// ```
 pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 	manifest_path: P,
 	dependency_name: &str,
