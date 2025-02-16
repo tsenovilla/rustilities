@@ -119,7 +119,7 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 /// [dependencies]
 ///         "#,
 ///  ).unwrap();
-//
+///
 /// assert_eq!(
 ///     rustilities::manifest::find_workspace_manifest(&main_path),
 ///     Some(workspace_manifest_path)
@@ -237,7 +237,7 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 /// )
 /// .is_ok());
 ///
-/// // Check that the dependency was added to the manifest
+/// // Check that the dependencies was added to the manifest
 /// assert_eq!(
 ///     std::fs::read_to_string(&manifest_path).unwrap(),
 ///     r#"
