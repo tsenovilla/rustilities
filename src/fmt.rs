@@ -13,8 +13,8 @@ const EXPECT_MSG: &str = "If cargo fmt were to fail with an IO error, it would h
 /// - In case of failure, it tries to apply `cargo fmt --all` to it.
 /// - Otherwise it returns an error explaining why the command failed.
 /// ## Errors:
-/// - If neither `cargo +nightly fmt --all` nor `cargo fmt --all` can be successfully
-///   applied to the path.
+/// - If neither `cargo +nightly fmt --all` nor `cargo fmt --all` can be successfully applied to the
+///   path.
 pub fn format_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 	fn do_format_dir(path: &Path) -> Result<(), Error> {
 		Command::new("cargo")
