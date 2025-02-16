@@ -3,20 +3,17 @@
 [<img alt="Crates.io" src="https://img.shields.io/crates/v/rustilities.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/rustilities)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-rustilities-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/rustilities)
 
-Description 📖📚
-====
+# Description 📖📚
 
 This crate offers several functionalities that are not necessarily related to each other. 
 Please refer to the specific documentation for each part of the crate to learn more about it.
 
 [The crate docs](https://docs.rs/rustilities/latest/rustilities) should be considered the only source of truth for this crate usage.
 
-Features ⚙️
-====
+### Features ⚙️
 
 The crate splits its functionalities into several features, allowing the compilation of only the parts that are needed. The `full` feature compiles the entire crate.
 
-Contributing 🤝🚀
-====
+# Contributing 🤝🚀
 
 Any contribution is more than welcome! 🤝🦾 Just open a PR with your changes and it'll be considered 😸
