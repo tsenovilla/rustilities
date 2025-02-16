@@ -369,6 +369,26 @@ dependency = { path = "../path" }
 }
 
 #[test]
+fn add_crate_to_dependencies_works_for_empty_manifest() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		std::fs::write(&builder.crate_manifest, "").expect("Manifest should be writable; qed;");
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::new(ManifestDependencyOrigin::workspace(), true, vec![], false)
+		)
+		.is_ok());
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"[dependencies]
+dependency = { workspace = true }
+"#
+		);
+	});
+}
+
+#[test]
 fn add_crate_to_dependencies_fails_if_manifest_path_isnt_readable() {
 	TestBuilder::default().build().execute(|builder| {
 		assert!(matches!(
