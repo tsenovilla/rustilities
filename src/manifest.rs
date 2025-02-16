@@ -7,8 +7,8 @@ mod types;
 use crate::Error;
 use cargo_toml::Manifest;
 use std::path::{Path, PathBuf};
-use toml_edit::{DocumentMut, InlineTable, Item, Table};
-pub use types::ManifestDependencyConfig;
+use toml_edit::{Array, DocumentMut, InlineTable, Item, Table};
+pub use types::{ManifestDependencyConfig, ManifestDependencyOrigin};
 
 /// Given a path, this function finds the manifest corresponding to the innermost crate/workspace
 /// containing that path if there's any.
@@ -193,28 +193,40 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 		dependency_name: &str,
 		dependency_config: ManifestDependencyConfig,
 	) {
-		let mut crate_declaration = InlineTable::new();
-		match dependency_config {
-			ManifestDependencyConfig::Workspace => {
-				crate_declaration.insert(
+		let mut dependency_declaration = InlineTable::new();
+		match &dependency_config.origin {
+			ManifestDependencyOrigin::Workspace => {
+				dependency_declaration.insert(
 					"workspace",
 					toml_edit::value(true)
 						.into_value()
 						.expect("true is bool, so value(true) is Value::Boolean;qed;"),
 				);
-				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
-			ManifestDependencyConfig::External { version } => {
-				crate_declaration.insert(
+			ManifestDependencyOrigin::Git { url, branch } => {
+				dependency_declaration.insert(
+					"git",
+					toml_edit::value(url.to_owned())
+						.into_value()
+						.expect("url is String, so value(url) is Value::String; qed;"),
+				);
+				dependency_declaration.insert(
+					"branch",
+					toml_edit::value(branch.to_owned())
+						.into_value()
+						.expect("branch is String, so value(branch) is Value::String; qed;"),
+				);
+			},
+			ManifestDependencyOrigin::CratesIO { version } => {
+				dependency_declaration.insert(
 					"version",
 					toml_edit::value(version.to_owned())
 						.into_value()
 						.expect("version is String, so value(version) is Value::String; qed;"),
 				);
-				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
-			ManifestDependencyConfig::Local { relative_path } => {
-				crate_declaration.insert(
+			ManifestDependencyOrigin::Local { relative_path } => {
+				dependency_declaration.insert(
 					"path",
 					toml_edit::value(relative_path.to_string_lossy().into_owned())
 						.into_value()
@@ -222,9 +234,42 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 						"relative_path is String, so value(relative_path) is Value::String; qed;",
 					),
 				);
-				dependencies.insert(dependency_name, toml_edit::value(crate_declaration));
 			},
 		}
+
+		if !dependency_config.default_features {
+			dependency_declaration.insert(
+				"default-features",
+				toml_edit::value(false)
+					.into_value()
+					.expect("false is bool so value(false) is Value::Boolean; qed;"),
+			);
+		}
+
+		if !dependency_config.features.is_empty() {
+			let mut features = Array::new();
+			dependency_config
+				.features
+				.iter()
+				.for_each(|feature| features.push(feature.to_owned()));
+			dependency_declaration.insert(
+				"features",
+				toml_edit::value(features)
+					.into_value()
+					.expect("features is Array, so value(features) is Value::Array; qed;"),
+			);
+		}
+
+		if dependency_config.optional {
+			dependency_declaration.insert(
+				"optional",
+				toml_edit::value(true)
+					.into_value()
+					.expect("true is bool so value(true) is Value::Boolean; qed;"),
+			);
+		}
+
+		dependencies.insert(dependency_name, toml_edit::value(dependency_declaration));
 	}
 
 	let mut doc = std::fs::read_to_string(manifest_path.as_ref())?.parse::<DocumentMut>()?;

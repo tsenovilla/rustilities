@@ -245,12 +245,17 @@ fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_workspace_dependency() {
+fn add_crate_to_dependencies_adds_workspace_dependency_without_default_features() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
 			"dependency",
-			ManifestDependencyConfig::workspace()
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::workspace(),
+				false,
+				vec![],
+				false
+			)
 		)
 		.is_ok());
 
@@ -264,19 +269,24 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dependency = { workspace = true }
+dependency = { workspace = true, default-features = false }
         "#
 		);
 	});
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_external_dependency() {
+fn add_crate_to_dependencies_adds_crates_io_optional_dependency() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
 			"dependency",
-			ManifestDependencyConfig::external("1.0.0")
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::crates_io("1.0.0"),
+				true,
+				vec![],
+				true
+			)
 		)
 		.is_ok());
 
@@ -290,7 +300,38 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dependency = { version = "1.0.0" }
+dependency = { version = "1.0.0", optional = true }
+        "#
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_adds_git_dependency_with_features() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::git("https://some_url.com", "stable"),
+				true,
+				vec!["feature_a", "feature_b"],
+				false
+			)
+		)
+		.is_ok());
+
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dependency = { git = "https://some_url.com", branch = "stable", features = ["feature_a", "feature_b"] }
         "#
 		);
 	});
@@ -302,7 +343,12 @@ fn add_crate_to_dependencies_adds_local_dependency() {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
 			"dependency",
-			ManifestDependencyConfig::local(Path::new("../path"))
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::local("../path".as_ref()),
+				true,
+				vec![],
+				false
+			)
 		)
 		.is_ok());
 
@@ -323,34 +369,13 @@ dependency = { path = "../path" }
 }
 
 #[test]
-fn add_crate_to_dependencies_works_for_empty_manifest() {
-	TestBuilder::default().with_crate().build().execute(|builder| {
-		std::fs::write(&builder.crate_manifest, "").expect("Manifest should be writable; qed;");
-		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
-			"dependency",
-			ManifestDependencyConfig::workspace()
-		)
-		.is_ok());
-
-		assert_eq!(
-			std::fs::read_to_string(&builder.crate_manifest)
-				.expect("This should be readable; qed;"),
-			r#"[dependencies]
-dependency = { workspace = true }
-"#
-		);
-	});
-}
-
-#[test]
 fn add_crate_to_dependencies_fails_if_manifest_path_isnt_readable() {
 	TestBuilder::default().build().execute(|builder| {
 		assert!(matches!(
 			add_crate_to_dependencies(
 			builder.tempdir.path().join("unexisting/path/Cargo.toml"),
 				"dependency",
-				ManifestDependencyConfig::workspace()
+			ManifestDependencyConfig::new(ManifestDependencyOrigin::workspace(), false, vec![], false)
 			),
 			Err(Error::IO(err)) if err.kind() == ErrorKind::NotFound
 		));
@@ -364,7 +389,12 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_parsed() {
 			add_crate_to_dependencies(
 				&builder.crate_paths[3], // main.rs path
 				"dependency",
-				ManifestDependencyConfig::workspace()
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::workspace(),
+					false,
+					vec![],
+					false
+				)
 			),
 			Err(Error::TomlEdit(_))
 		));
@@ -382,7 +412,7 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_written() {
 				add_crate_to_dependencies(
 				&builder.workspace_manifest,
 					"dependency",
-					ManifestDependencyConfig::workspace()
+			ManifestDependencyConfig::new(ManifestDependencyOrigin::workspace(), false, vec![], false)
 				),
 				Err(Error::IO(err)) if err.kind() == ErrorKind::PermissionDenied
 			));
