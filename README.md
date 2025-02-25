@@ -12,7 +12,7 @@ Please refer to the specific documentation for each part of the crate to learn m
 
 ### Features ⚙️
 
-The crate splits its functionalities into several features, allowing the compilation of only the parts that are needed. The `full` feature compiles the entire crate.
+The crate splits its functionalities into several features, allowing the compilation of only the parts that are needed. 
 
 # Contributing 🤝🚀
 

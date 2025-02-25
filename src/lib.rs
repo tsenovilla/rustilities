@@ -8,22 +8,26 @@
 //! # Features
 //!
 //! The crate splits is functionalities into several features, allowing to compile only the
-//! parts that are needed. The `full` feature compiles the entire crate.
+//! parts that are needed.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod error;
 
-#[cfg(any(feature = "paths", feature = "full"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "paths", feature = "full"))))]
+#[cfg(feature = "paths")]
+#[cfg_attr(docsrs, doc(cfg(feature = "paths")))]
 pub mod paths;
 
-#[cfg(any(feature = "fmt", feature = "full"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "fmt", feature = "full"))))]
+#[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
 
-#[cfg(any(feature = "manifest", feature = "full"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "manifest", feature = "full"))))]
+#[cfg(feature = "manifest")]
+#[cfg_attr(docsrs, doc(cfg(feature = "manifest")))]
 pub mod manifest;
+
+#[cfg(feature = "parsing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
+pub mod parsing;
 
 pub use error::Error;

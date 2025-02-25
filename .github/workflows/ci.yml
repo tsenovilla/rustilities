@@ -47,7 +47,7 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Run unit tests
         run: |
-          cargo test --features paths,manifest --lib
+          cargo test --features paths,manifest,parsing --lib
           # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
           cargo test --features fmt --lib -- --test-threads=1
 
@@ -76,7 +76,7 @@ jobs:
       - name: Generate code coverage
         run: |
           cargo llvm-cov \
-          --features paths,manifest \
+          --features paths,manifest,parsing \
           --codecov \
           --ignore-filename-regex "/tests\.rs$" \
           --output-path cov_no_fmt.json
