@@ -9,8 +9,8 @@ use syn::{
 
 /// Given a [Generics](https://docs.rs/syn/latest/syn/struct.Generics.html), this function will
 /// return:
-/// - A [Punctuated](https://docs.rs/syn/latest/syn/punctuated/struct.Punctuated.html) including
-///   the generics declarations without trait bounds.
+/// - A [Punctuated](https://docs.rs/syn/latest/syn/punctuated/struct.Punctuated.html) including the
+///   generics declarations without trait bounds.
 /// - Another `Punctuated` including the generics idents.
 /// - A [WhereClause](https://docs.rs/syn/latest/syn/struct.WhereClause.html) collecting the trait
 ///   bounds.
