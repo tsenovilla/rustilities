@@ -7,7 +7,7 @@ use syn::{
 	parse_quote, punctuated::Punctuated, GenericParam, Generics, Token, WhereClause, WherePredicate,
 };
 
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::TokenTree;
 
 /// Given a [Generics](https://docs.rs/syn/latest/syn/struct.Generics.html), this function will
 /// return:
