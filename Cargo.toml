@@ -1,6 +1,6 @@
 [package]
 name = "rustilities"
-version = "2.0.0"
+version = "2.1.0"
 repository = "https://github.com/tsenovilla/rustilities"
 license = "GPL-3.0"
 rust-version = "1.84.0"
@@ -13,12 +13,13 @@ cargo_toml = { version = "0.21.0", optional = true }
 thiserror = "2.0.11"
 toml_edit = { version = "0.22.24", optional = true }
 syn = { version = "2.0.98", features = ["full", "parsing", "extra-traits"], optional = true }
+proc-macro2 = { version = "1.0.93", optional = true } 
 
 [features]
 paths = []
 fmt = []
 manifest = ["cargo_toml", "toml_edit"]
-parsing = ["syn"]
+parsing = ["syn", "proc-macro2"]
 
 [dev-dependencies]
 tempfile = "3.16.0"

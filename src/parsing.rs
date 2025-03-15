@@ -7,6 +7,8 @@ use syn::{
 	parse_quote, punctuated::Punctuated, GenericParam, Generics, Token, WhereClause, WherePredicate,
 };
 
+use proc_macro2::{TokenStream, TokenTree};
+
 /// Given a [Generics](https://docs.rs/syn/latest/syn/struct.Generics.html), this function will
 /// return:
 /// - A [Punctuated](https://docs.rs/syn/latest/syn/punctuated/struct.Punctuated.html) including the
@@ -135,4 +137,24 @@ pub fn extract_generics(
 			}
 		});
 	(generics_declarations, generics_idents, where_clause)
+}
+
+pub fn lazy_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> bool {
+	match (tree1, tree2) {
+		(TokenTree::Ident(id1), TokenTree::Ident(id2)) => id1.to_string() == id2.to_string(),
+		(TokenTree::Punct(p1), TokenTree::Punct(p2)) => p1.as_char() == p2.as_char(),
+		(TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
+		(TokenTree::Group(g1), TokenTree::Group(g2)) => {
+			let g1_tt: Vec<TokenTree> = g1.stream().into_iter().collect();
+			let g2_tt: Vec<TokenTree> = g2.stream().into_iter().collect();
+			if g1_tt.len() != g2_tt.len() {
+				return false;
+			}
+			g1_tt
+				.iter()
+				.zip(g2_tt.iter())
+				.all(|(tt1, tt2)| lazy_token_tree_compare(&tt1, &tt2))
+		},
+		_ => false,
+	}
 }
