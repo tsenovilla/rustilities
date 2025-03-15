@@ -77,49 +77,63 @@ fn extract_generics_with_bounds_and_where_clause() {
 fn ident_equal() {
 	let id1 = TokenTree::Ident(Ident::new("foo", Span::call_site()));
 	let id2 = TokenTree::Ident(Ident::new("foo", Span::call_site()));
-	assert!(lazy_token_tree_compare(&id1, &id2));
+	assert!(syntactic_token_tree_compare(&id1, &id2));
 }
 
 #[test]
 fn ident_not_equal() {
 	let id1 = TokenTree::Ident(Ident::new("foo", Span::call_site()));
 	let id2 = TokenTree::Ident(Ident::new("bar", Span::call_site()));
-	assert!(!lazy_token_tree_compare(&id1, &id2));
+	assert!(!syntactic_token_tree_compare(&id1, &id2));
 }
 
 #[test]
-fn punct_equal() {
+fn punct_equal_same_spacing() {
 	let punct1 = TokenTree::Punct(Punct::new(';', Spacing::Alone));
 	let punct2 = TokenTree::Punct(Punct::new(';', Spacing::Alone));
-	assert!(lazy_token_tree_compare(&punct1, &punct2));
+	assert!(syntactic_token_tree_compare(&punct1, &punct2));
+}
+
+#[test]
+fn punct_equal_different_spacing() {
+	let punct1 = TokenTree::Punct(Punct::new(';', Spacing::Alone));
+	let punct2 = TokenTree::Punct(Punct::new(';', Spacing::Joint));
+	assert!(syntactic_token_tree_compare(&punct1, &punct2));
 }
 
 #[test]
 fn punct_not_equal() {
 	let punct1 = TokenTree::Punct(Punct::new(';', Spacing::Alone));
 	let punct2 = TokenTree::Punct(Punct::new(',', Spacing::Alone));
-	assert!(!lazy_token_tree_compare(&punct1, &punct2));
+	assert!(!syntactic_token_tree_compare(&punct1, &punct2));
 }
 
 #[test]
 fn literal_equal() {
 	let lit1 = TokenTree::Literal(Literal::string("hello"));
 	let lit2 = TokenTree::Literal(Literal::string("hello"));
-	assert!(lazy_token_tree_compare(&lit1, &lit2));
+	assert!(syntactic_token_tree_compare(&lit1, &lit2));
+}
+
+#[test]
+fn literal_equal_different_literal_type_with_same_syntactic_content() {
+	let lit1 = TokenTree::Literal(Literal::u8_unsuffixed(1));
+	let lit2 = TokenTree::Literal(Literal::usize_unsuffixed(1));
+	assert!(syntactic_token_tree_compare(&lit1, &lit2));
 }
 
 #[test]
 fn literal_not_equal() {
 	let lit1 = TokenTree::Literal(Literal::string("hello"));
 	let lit2 = TokenTree::Literal(Literal::string("world"));
-	assert!(!lazy_token_tree_compare(&lit1, &lit2));
+	assert!(!syntactic_token_tree_compare(&lit1, &lit2));
 }
 
 #[test]
 fn group_empty() {
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, TokenStream::new()));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, TokenStream::new()));
-	assert!(lazy_token_tree_compare(&group1, &group2));
+	assert!(syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -132,7 +146,7 @@ fn group_different_length() {
 	};
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, TokenStream::new()));
-	assert!(!lazy_token_tree_compare(&group1, &group2));
+	assert!(!syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -155,7 +169,6 @@ fn group_equal_tokens() {
 		ts.extend(
 			[
 				TokenTree::Ident(Ident::new("x", Span::call_site())),
-				// Same token with different spacing
 				TokenTree::Punct(Punct::new('+', Spacing::Joint)),
 				TokenTree::Literal(Literal::i32_unsuffixed(42)),
 			]
@@ -166,7 +179,7 @@ fn group_equal_tokens() {
 	};
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
-	assert!(lazy_token_tree_compare(&group1, &group2));
+	assert!(syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -199,7 +212,7 @@ fn group_not_equal_tokens() {
 	};
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
-	assert!(!lazy_token_tree_compare(&group1, &group2));
+	assert!(!syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -232,14 +245,14 @@ fn group_not_equal_ordering() {
 	};
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
-	assert!(!lazy_token_tree_compare(&group1, &group2));
+	assert!(!syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
 fn cross_variant_comparison() {
 	let id = TokenTree::Ident(Ident::new("test", Span::call_site()));
 	let lit = TokenTree::Literal(Literal::string("test"));
-	assert!(!lazy_token_tree_compare(&id, &lit));
+	assert!(!syntactic_token_tree_compare(&id, &lit));
 }
 
 #[test]
@@ -278,7 +291,7 @@ fn nested_groups_equal() {
 
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
-	assert!(lazy_token_tree_compare(&group1, &group2));
+	assert!(syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -317,5 +330,5 @@ fn nested_groups_not_equal() {
 
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
-	assert!(!lazy_token_tree_compare(&group1, &group2));
+	assert!(!syntactic_token_tree_compare(&group1, &group2));
 }

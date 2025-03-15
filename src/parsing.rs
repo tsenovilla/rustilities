@@ -139,9 +139,54 @@ pub fn extract_generics(
 	(generics_declarations, generics_idents, where_clause)
 }
 
-pub fn lazy_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> bool {
+/// Compares two [`TokenTree`](https://docs.rs/proc-macro2/latest/proc_macro2/enum.TokenTree.html) based solely
+/// on their syntactic content, without taking into account any other parsing detail, such as
+/// spacing or spans
+///
+///
+/// # Example
+///
+/// ```rust
+/// use proc_macro2::{
+///     Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree,
+/// };
+///
+/// let ts1 = {
+///     let mut ts = TokenStream::new();
+///     ts.extend(
+///         [
+///             TokenTree::Ident(Ident::new("x", Span::call_site())),
+///             TokenTree::Punct(Punct::new('+', Spacing::Alone)),
+///             TokenTree::Literal(Literal::i32_unsuffixed(42)),
+///         ]
+///         .iter()
+///         .cloned(),
+///     );
+///     ts
+/// };
+///
+/// let ts2 = {
+///     let mut ts = TokenStream::new();
+///     ts.extend(
+///         [
+///             TokenTree::Ident(Ident::new("x", Span::call_site())),
+///             // Same token with different spacing
+///             TokenTree::Punct(Punct::new('+', Spacing::Joint)),
+///             TokenTree::Literal(Literal::u128_unsuffixed(42)),
+///         ]
+///         .iter()
+///         .cloned(),
+///     );
+///     ts
+/// };
+///
+/// let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
+/// let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
+/// assert!(rustilities::parsing::syntactic_token_tree_compare(&group1, &group2));
+/// ```
+pub fn syntactic_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> bool {
 	match (tree1, tree2) {
-		(TokenTree::Ident(id1), TokenTree::Ident(id2)) => id1.to_string() == id2.to_string(),
+		(TokenTree::Ident(id1), TokenTree::Ident(id2)) => id1 == id2.to_string().as_str(),
 		(TokenTree::Punct(p1), TokenTree::Punct(p2)) => p1.as_char() == p2.as_char(),
 		(TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
 		(TokenTree::Group(g1), TokenTree::Group(g2)) => {
@@ -153,7 +198,7 @@ pub fn lazy_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> bool {
 			g1_tt
 				.iter()
 				.zip(g2_tt.iter())
-				.all(|(tt1, tt2)| lazy_token_tree_compare(&tt1, &tt2))
+				.all(|(tt1, tt2)| syntactic_token_tree_compare(tt1, tt2))
 		},
 		_ => false,
 	}
