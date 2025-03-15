@@ -216,25 +216,25 @@ pub fn syntactic_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> boo
 ///
 /// # Example
 /// ```rust
-/// use proc_macro2::{TokenStream, TokenTree, Ident, Punct, Spacing, Literal};
+/// use proc_macro2::{TokenStream, TokenTree, Ident, Punct, Spacing, Literal, Span};
 ///
 /// let mut stream1 = TokenStream::new();
 /// let mut stream2 = TokenStream::new();
 /// stream1.extend([
-///     TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+///     TokenTree::Ident(Ident::new("x", Span::call_site())),
 ///     TokenTree::Punct(Punct::new('=', Spacing::Alone)),
-///     TokenTree::Literal(Literal::i32_suffixed(42)),
+///     TokenTree::Literal(Literal::usize_unsuffixed(42)),
 /// ]);
 /// stream2.extend([
-///     TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+///     TokenTree::Ident(Ident::new("x", Span::call_site())),
 ///     TokenTree::Punct(Punct::new('=', Spacing::Alone)),
-///     TokenTree::Literal(Literal::i32_suffixed(42)),
+///     TokenTree::Literal(Literal::u8_unsuffixed(42)),
 /// ]);
-/// assert!(rustilities::parsing::syntactic_token_stream_compare(&stream1, &stream2));
+/// assert!(rustilities::parsing::syntactic_token_stream_compare(stream1, stream2));
 /// ```
-pub fn syntactic_token_stream_compare(stream1: &TokenStream, stream2: &TokenStream) -> bool {
-	let stream1_tt: Vec<TokenTree> = stream1.clone().into_iter().collect();
-	let stream2_tt: Vec<TokenTree> = stream2.clone().into_iter().collect();
+pub fn syntactic_token_stream_compare(stream1: TokenStream, stream2: TokenStream) -> bool {
+	let stream1_tt: Vec<TokenTree> = stream1.into_iter().collect();
+	let stream2_tt: Vec<TokenTree> = stream2.into_iter().collect();
 
 	if stream1_tt.len() != stream2_tt.len() {
 		false
@@ -244,4 +244,71 @@ pub fn syntactic_token_stream_compare(stream1: &TokenStream, stream2: &TokenStre
 			.zip(stream2_tt.iter())
 			.all(|(tt1, tt2)| syntactic_token_tree_compare(tt1, tt2))
 	}
+}
+
+/// Assert if a [`TokenStream`](https://docs.rs/proc-macro2/latest/proc_macro2/struct.TokenStream.html) is contained in another,
+/// based solely on their syntactic content, without taking into account any other parsing detail,
+/// such as spacing or spans. This inclusion isn't strict, this is, two equal `TokenStream` are
+/// contained within each other. An empty TokenStream is considered contained in any TokenStream.
+///
+/// # Example
+/// ```rust
+/// use proc_macro2::{TokenStream, TokenTree, Ident, Punct, Spacing, Literal, Span};
+///
+/// let mut small_stream = TokenStream::new();
+/// let mut large_stream = TokenStream::new();
+/// small_stream.extend([
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(42)),
+/// ]);
+/// large_stream.extend([
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(42)),
+///   TokenTree::Ident(Ident::new("y", Span::call_site())),
+/// ]);
+///
+/// // x = 42 is contained in x = x x = 42 y, but the opposite is false.
+/// assert!(rustilities::parsing::syntactic_token_stream_contains(small_stream.clone(), large_stream.clone()));
+/// assert!(!rustilities::parsing::syntactic_token_stream_contains(large_stream, small_stream.clone()));
+///
+/// // Empty TokenStream is contained everywhere
+/// assert!(rustilities::parsing::syntactic_token_stream_contains(TokenStream::new(), small_stream));
+/// ```
+// This clippy lint: https://rust-lang.github.io/rust-clippy/master/index.html#mut_range_bound is
+// triggered by the function when the outer index 'i' is mutated to 'j'. This is a false positive
+// as immediately after that the flow goes back to the outer while loop, so we can tell clippy this
+// is OK
+#[allow(clippy::mut_range_bound)]
+pub fn syntactic_token_stream_contains(small: TokenStream, large: TokenStream) -> bool {
+	let small_tt: Vec<TokenTree> = small.into_iter().collect();
+	let large_tt: Vec<TokenTree> = large.into_iter().collect();
+
+	if small_tt.is_empty() {
+		return true;
+	}
+
+	if large_tt.len() < small_tt.len() {
+		return false;
+	}
+
+	let mut i = 0;
+	'outer: while i <= large_tt.len() - small_tt.len() {
+		if syntactic_token_tree_compare(&large_tt[i], &small_tt[0]) {
+			for j in i..i + small_tt.len() {
+				if !syntactic_token_tree_compare(&large_tt[j], &small_tt[j - i]) {
+					i = j;
+					continue 'outer;
+				}
+			}
+			return true;
+		}
+		i += 1;
+	}
+
+	false
 }
