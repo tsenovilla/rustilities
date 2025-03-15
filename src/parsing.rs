@@ -7,7 +7,7 @@ use syn::{
 	parse_quote, punctuated::Punctuated, GenericParam, Generics, Token, WhereClause, WherePredicate,
 };
 
-use proc_macro2::TokenTree;
+use proc_macro2::{TokenStream, TokenTree};
 
 /// Given a [Generics](https://docs.rs/syn/latest/syn/struct.Generics.html), this function will
 /// return:
@@ -180,8 +180,8 @@ pub fn extract_generics(
 ///     ts
 /// };
 ///
-/// let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
-/// let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
+/// let group1 = TokenTree::Group(Group::new(Delimiter::Brace, ts1));
+/// let group2 = TokenTree::Group(Group::new(Delimiter::Brace, ts2));
 /// assert!(rustilities::parsing::syntactic_token_tree_compare(&group1, &group2));
 /// ```
 pub fn syntactic_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> bool {
@@ -190,6 +190,10 @@ pub fn syntactic_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> boo
 		(TokenTree::Punct(p1), TokenTree::Punct(p2)) => p1.as_char() == p2.as_char(),
 		(TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
 		(TokenTree::Group(g1), TokenTree::Group(g2)) => {
+			if g1.delimiter() != g2.delimiter() {
+				return false;
+			}
+
 			let g1_tt: Vec<TokenTree> = g1.stream().into_iter().collect();
 			let g2_tt: Vec<TokenTree> = g2.stream().into_iter().collect();
 			if g1_tt.len() != g2_tt.len() {
@@ -201,5 +205,43 @@ pub fn syntactic_token_tree_compare(tree1: &TokenTree, tree2: &TokenTree) -> boo
 				.all(|(tt1, tt2)| syntactic_token_tree_compare(tt1, tt2))
 		},
 		_ => false,
+	}
+}
+
+/// Compares two [`TokenStream`](https://docs.rs/proc-macro2/latest/proc_macro2/struct.TokenStream.html) based solely
+/// on their syntactic content, without taking into account any other parsing detail, such as
+/// spacing or spans. This function compares the two token streams by syntactically comparing each
+/// [`TokenTree`](https://docs.rs/proc-macro2/latest/proc_macro2/struct.TokenTree.html) contained
+/// in both streams.
+///
+/// # Example
+/// ```rust
+/// use proc_macro2::{TokenStream, TokenTree, Ident, Punct, Spacing, Literal};
+///
+/// let mut stream1 = TokenStream::new();
+/// let mut stream2 = TokenStream::new();
+/// stream1.extend([
+///     TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+///     TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///     TokenTree::Literal(Literal::i32_suffixed(42)),
+/// ]);
+/// stream2.extend([
+///     TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+///     TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///     TokenTree::Literal(Literal::i32_suffixed(42)),
+/// ]);
+/// assert!(rustilities::parsing::syntactic_token_stream_compare(&stream1, &stream2));
+/// ```
+pub fn syntactic_token_stream_compare(stream1: &TokenStream, stream2: &TokenStream) -> bool {
+	let stream1_tt: Vec<TokenTree> = stream1.clone().into_iter().collect();
+	let stream2_tt: Vec<TokenTree> = stream2.clone().into_iter().collect();
+
+	if stream1_tt.len() != stream2_tt.len() {
+		false
+	} else {
+		stream1_tt
+			.iter()
+			.zip(stream2_tt.iter())
+			.all(|(tt1, tt2)| syntactic_token_tree_compare(tt1, tt2))
 	}
 }

@@ -150,7 +150,7 @@ fn group_different_length() {
 }
 
 #[test]
-fn group_equal_tokens() {
+fn equal_groups() {
 	let ts1 = {
 		let mut ts = TokenStream::new();
 		ts.extend(
@@ -177,9 +177,42 @@ fn group_equal_tokens() {
 		);
 		ts
 	};
-	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
-	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
+	let group1 = TokenTree::Group(Group::new(Delimiter::Brace, ts1));
+	let group2 = TokenTree::Group(Group::new(Delimiter::Brace, ts2));
 	assert!(syntactic_token_tree_compare(&group1, &group2));
+}
+
+#[test]
+fn group_equal_content_different_delimiters() {
+	let ts1 = {
+		let mut ts = TokenStream::new();
+		ts.extend(
+			[
+				TokenTree::Ident(Ident::new("x", Span::call_site())),
+				TokenTree::Punct(Punct::new('+', Spacing::Alone)),
+				TokenTree::Literal(Literal::i32_unsuffixed(42)),
+			]
+			.iter()
+			.cloned(),
+		);
+		ts
+	};
+	let ts2 = {
+		let mut ts = TokenStream::new();
+		ts.extend(
+			[
+				TokenTree::Ident(Ident::new("x", Span::call_site())),
+				TokenTree::Punct(Punct::new('+', Spacing::Joint)),
+				TokenTree::Literal(Literal::i32_unsuffixed(42)),
+			]
+			.iter()
+			.cloned(),
+		);
+		ts
+	};
+	let group1 = TokenTree::Group(Group::new(Delimiter::Parenthesis, ts1));
+	let group2 = TokenTree::Group(Group::new(Delimiter::Brace, ts2));
+	assert!(!syntactic_token_tree_compare(&group1, &group2));
 }
 
 #[test]
@@ -331,4 +364,77 @@ fn nested_groups_not_equal() {
 	let group1 = TokenTree::Group(Group::new(Delimiter::None, ts1));
 	let group2 = TokenTree::Group(Group::new(Delimiter::None, ts2));
 	assert!(!syntactic_token_tree_compare(&group1, &group2));
+}
+
+#[test]
+fn equal_token_streams() {
+	let mut stream1 = TokenStream::new();
+	let mut stream2 = TokenStream::new();
+	stream1.extend([
+		TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+	stream2.extend([
+		TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+	assert!(syntactic_token_stream_compare(&stream1, &stream2));
+}
+
+#[test]
+fn different_token_streams() {
+	let mut stream1 = TokenStream::new();
+	stream1.extend(
+		[
+			TokenTree::Ident(Ident::new("x", Span::call_site())),
+			TokenTree::Punct(Punct::new('+', Spacing::Joint)),
+			TokenTree::Literal(Literal::i32_unsuffixed(42)),
+		]
+		.iter()
+		.cloned(),
+	);
+
+	let mut stream2 = TokenStream::new();
+	stream2.extend(
+		[
+			TokenTree::Ident(Ident::new("y", Span::call_site())),
+			TokenTree::Punct(Punct::new('+', Spacing::Joint)),
+			TokenTree::Literal(Literal::i32_unsuffixed(42)),
+		]
+		.iter()
+		.cloned(),
+	);
+
+	assert!(!syntactic_token_stream_compare(&stream1, &stream2));
+}
+
+#[test]
+fn empty_streams() {
+	let stream1 = TokenStream::new();
+	let stream2 = TokenStream::new();
+	assert!(syntactic_token_stream_compare(&stream1, &stream2));
+}
+
+#[test]
+fn different_stream_lengths() {
+	let mut stream1 = TokenStream::new();
+	stream1.extend(
+		[
+			TokenTree::Ident(Ident::new("x", Span::call_site())),
+			TokenTree::Punct(Punct::new('+', Spacing::Joint)),
+			TokenTree::Literal(Literal::i32_unsuffixed(42)),
+		]
+		.iter()
+		.cloned(),
+	);
+
+	let mut stream2 = TokenStream::new();
+	stream2.extend([
+		TokenTree::Ident(Ident::new("x", proc_macro2::Span::call_site())),
+		TokenTree::Punct(Punct::new(';', Spacing::Alone)),
+	]);
+
+	assert!(!syntactic_token_stream_compare(&stream1, &stream2));
 }
