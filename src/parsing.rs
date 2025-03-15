@@ -250,11 +250,17 @@ pub fn syntactic_token_stream_compare(stream1: TokenStream, stream2: TokenStream
 /// based solely on their syntactic content, without taking into account any other parsing detail,
 /// such as spacing or spans.
 ///
-/// The function searchs recursively inside token groups.
+/// The inclusion is also satisfied if the larger `TokenStream` contains a token group (or a nested
+/// list of groups) containing the smaller `TokenStream`.
+///
 /// The inclusion isn't strict, this is, two equal `TokenStream` are contained within each other.
+///
 /// An empty TokenStream is considered contained in any TokenStream.
 ///
-/// # Example
+/// # Examples
+///
+/// `TokenStream` directly contained inside another `TokenStream`.
+///
 /// ```rust
 /// use proc_macro2::{TokenStream, TokenTree, Ident, Punct, Spacing, Literal, Span};
 ///
@@ -278,9 +284,52 @@ pub fn syntactic_token_stream_compare(stream1: TokenStream, stream2: TokenStream
 /// // x = 42 is contained in x = x x = 42 y, but the opposite is false.
 /// assert!(rustilities::parsing::syntactic_token_stream_contains(small_stream.clone(), large_stream.clone()));
 /// assert!(!rustilities::parsing::syntactic_token_stream_contains(large_stream, small_stream.clone()));
+/// ```
+/// `TokenStream` contained inside a group in another `TokenStream`.
 ///
-/// // Empty TokenStream is contained everywhere
-/// assert!(rustilities::parsing::syntactic_token_stream_contains(TokenStream::new(), small_stream));
+/// ```rust
+/// use proc_macro2::{TokenStream, TokenTree, Delimiter, Group, Ident, Punct, Spacing, Literal, Span};
+///
+/// let mut small_stream = TokenStream::new();
+/// let mut large_stream = TokenStream::new();
+/// small_stream.extend([
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(42)),
+/// ]);
+///
+/// let mut mid_stream = TokenStream::new();
+/// mid_stream.extend([
+///   TokenTree::Ident(Ident::new("a", Span::call_site())),
+///   TokenTree::Punct(Punct::new('+', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(10)),
+/// ]);
+/// mid_stream.extend(small_stream.clone());
+/// let mid_group = TokenTree::Group(Group::new(Delimiter::Bracket, mid_stream));
+///
+/// let mut top_stream = TokenStream::new();
+/// top_stream.extend([
+///   TokenTree::Ident(Ident::new("b", Span::call_site())),
+///   TokenTree::Punct(Punct::new('-', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(5)),
+///   mid_group,
+/// ]);
+///
+/// let top_group = TokenTree::Group(Group::new(Delimiter::Parenthesis, top_stream));
+///
+/// large_stream.extend([
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+///   TokenTree::Ident(Ident::new("x", Span::call_site())),
+///   TokenTree::Ident(Ident::new("y", Span::call_site())),
+///   top_group,
+///   TokenTree::Ident(Ident::new("zz", Span::call_site())),
+///   TokenTree::Punct(Punct::new(';', Spacing::Alone)),
+///   TokenTree::Literal(Literal::i32_suffixed(42)),
+/// ]);
+///
+/// assert!(rustilities::parsing::syntactic_token_stream_contains(small_stream.clone(), large_stream.clone()));
+/// assert!(!rustilities::parsing::syntactic_token_stream_contains(large_stream, small_stream));
 /// ```
 // This clippy lint: https://rust-lang.github.io/rust-clippy/master/index.html#mut_range_bound is
 // triggered by the function when the outer index 'i' is mutated to 'j'. This is a false positive
