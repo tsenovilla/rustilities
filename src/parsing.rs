@@ -248,8 +248,11 @@ pub fn syntactic_token_stream_compare(stream1: TokenStream, stream2: TokenStream
 
 /// Assert if a [`TokenStream`](https://docs.rs/proc-macro2/latest/proc_macro2/struct.TokenStream.html) is contained in another,
 /// based solely on their syntactic content, without taking into account any other parsing detail,
-/// such as spacing or spans. This inclusion isn't strict, this is, two equal `TokenStream` are
-/// contained within each other. An empty TokenStream is considered contained in any TokenStream.
+/// such as spacing or spans.
+///
+/// The function searchs recursively inside token groups.
+/// The inclusion isn't strict, this is, two equal `TokenStream` are contained within each other.
+/// An empty TokenStream is considered contained in any TokenStream.
 ///
 /// # Example
 /// ```rust
@@ -285,7 +288,7 @@ pub fn syntactic_token_stream_compare(stream1: TokenStream, stream2: TokenStream
 // is OK
 #[allow(clippy::mut_range_bound)]
 pub fn syntactic_token_stream_contains(small: TokenStream, large: TokenStream) -> bool {
-	let small_tt: Vec<TokenTree> = small.into_iter().collect();
+	let small_tt: Vec<TokenTree> = small.clone().into_iter().collect();
 	let large_tt: Vec<TokenTree> = large.into_iter().collect();
 
 	if small_tt.is_empty() {
@@ -297,7 +300,7 @@ pub fn syntactic_token_stream_contains(small: TokenStream, large: TokenStream) -
 	}
 
 	let mut i = 0;
-	'outer: while i <= large_tt.len() - small_tt.len() {
+	'outer: while i < large_tt.len() {
 		if syntactic_token_tree_compare(&large_tt[i], &small_tt[0]) {
 			for j in i..i + small_tt.len() {
 				if !syntactic_token_tree_compare(&large_tt[j], &small_tt[j - i]) {
@@ -307,6 +310,14 @@ pub fn syntactic_token_stream_contains(small: TokenStream, large: TokenStream) -
 			}
 			return true;
 		}
+
+		match &large_tt[i] {
+			TokenTree::Group(group)
+				if syntactic_token_stream_contains(small.clone(), group.stream()) =>
+				return true,
+			_ => (),
+		}
+
 		i += 1;
 	}
 

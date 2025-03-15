@@ -465,6 +465,77 @@ fn contained_token_stream() {
 }
 
 #[test]
+fn contained_token_stream_inside_group() {
+	let mut small_stream = TokenStream::new();
+	let mut large_stream = TokenStream::new();
+	small_stream.extend([
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+
+	let small_group = TokenTree::Group(Group::new(Delimiter::Brace, small_stream.clone()));
+
+	large_stream.extend([
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Ident(Ident::new("y", Span::call_site())),
+		small_group,
+		TokenTree::Ident(Ident::new("zz", Span::call_site())),
+		TokenTree::Punct(Punct::new(';', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+
+	assert!(syntactic_token_stream_contains(small_stream.clone(), large_stream.clone()));
+	assert!(!syntactic_token_stream_contains(large_stream, small_stream));
+}
+
+#[test]
+fn contained_token_stream_inside_nested_groups() {
+	let mut small_stream = TokenStream::new();
+	let mut large_stream = TokenStream::new();
+	small_stream.extend([
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+
+	let mut mid_stream = TokenStream::new();
+	mid_stream.extend([
+		TokenTree::Ident(Ident::new("a", Span::call_site())),
+		TokenTree::Punct(Punct::new('+', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(10)),
+	]);
+	mid_stream.extend(small_stream.clone());
+	let mid_group = TokenTree::Group(Group::new(Delimiter::Bracket, mid_stream));
+
+	let mut top_stream = TokenStream::new();
+	top_stream.extend([
+		TokenTree::Ident(Ident::new("b", Span::call_site())),
+		TokenTree::Punct(Punct::new('-', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(5)),
+		mid_group,
+	]);
+
+	let top_group = TokenTree::Group(Group::new(Delimiter::Parenthesis, top_stream));
+
+	large_stream.extend([
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Punct(Punct::new('=', Spacing::Alone)),
+		TokenTree::Ident(Ident::new("x", Span::call_site())),
+		TokenTree::Ident(Ident::new("y", Span::call_site())),
+		top_group,
+		TokenTree::Ident(Ident::new("zz", Span::call_site())),
+		TokenTree::Punct(Punct::new(';', Spacing::Alone)),
+		TokenTree::Literal(Literal::i32_suffixed(42)),
+	]);
+
+	assert!(syntactic_token_stream_contains(small_stream.clone(), large_stream.clone()));
+	assert!(!syntactic_token_stream_contains(large_stream, small_stream));
+}
+
+#[test]
 fn not_contained_token_stream() {
 	let mut stream1 = TokenStream::new();
 	let mut stream2 = TokenStream::new();
