@@ -3,6 +3,9 @@
 #[cfg(test)]
 mod tests;
 
+pub mod attrs;
+pub mod attrs_mut;
+
 use syn::{
 	parse_quote, punctuated::Punctuated, GenericParam, Generics, Token, WhereClause, WherePredicate,
 };
