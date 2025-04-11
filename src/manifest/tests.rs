@@ -369,6 +369,85 @@ dependency = { path = "../path" }
 }
 
 #[test]
+fn add_crate_to_dependencies_works_for_crate_manifest_without_dependencies_section() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		std::fs::write(
+			&builder.crate_manifest,
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+"#,
+		)
+		.expect("Manifest should be writable; qed;");
+		assert!(add_crate_to_dependencies(
+			&builder.crate_manifest,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::workspace(),
+				true,
+				vec![],
+				false
+			)
+		)
+		.is_ok());
+		assert_eq!(
+			std::fs::read_to_string(&builder.crate_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dependency = { workspace = true }
+"#
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_works_for_workspace_manifest_without_dependencies_section() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
+		std::fs::write(
+			&builder.workspace_manifest,
+			r#"
+[workspace]
+resolver = "2"
+members = ["crate"]
+"#,
+		)
+		.expect("Manifest should be writable; qed;");
+
+		assert!(add_crate_to_dependencies(
+			&builder.workspace_manifest,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::crates_io("0.1.0"),
+				true,
+				vec![],
+				false
+			)
+		)
+		.is_ok());
+		assert_eq!(
+			std::fs::read_to_string(&builder.workspace_manifest)
+				.expect("This should be readable; qed;"),
+			r#"
+[workspace]
+resolver = "2"
+members = ["crate"]
+
+[workspace.dependencies]
+dependency = { version = "0.1.0" }
+"#
+		);
+	});
+}
+
+#[test]
 fn add_crate_to_dependencies_works_for_empty_manifest() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		std::fs::write(&builder.crate_manifest, "").expect("Manifest should be writable; qed;");

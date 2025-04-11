@@ -188,8 +188,10 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 ///
 /// If the path refers to a crate manifest, the dependency will be added to the `dependencies`
 /// section, while if the path refers to a workspace manifest the dependency will be added to
-/// `workspace.dependencies`. If none of these sections exist, a `dependencies` section will be
-/// added to the manifest including the new dependency.
+/// `workspace.dependencies`. If none of these sections exist, the needed section will be added
+/// with the new dependency, taking into account if the manifest is a crate manifest or a workspace
+/// manifest (an empty manifest is considered a crate manifest).
+///
 ///
 /// # Errors
 ///
@@ -367,6 +369,10 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 	} else if let Some(Item::Table(workspace)) = doc.get_mut("workspace") {
 		if let Some(Item::Table(dependencies)) = workspace.get_mut("dependencies") {
 			do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
+		} else {
+			let mut dependencies = Table::new();
+			do_add_crate_to_dependencies(&mut dependencies, dependency_name, dependency_config);
+			workspace.insert("dependencies", Item::Table(dependencies));
 		}
 	} else {
 		let mut dependencies = Table::new();
