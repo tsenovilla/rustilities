@@ -69,7 +69,7 @@ impl TestBuilder {
 resolver = "2"
 members = ["crate"]
 
-[dependencies]
+[workspace.dependencies]
         "#,
 			)
 			.expect("The manifest should be writable; qed;");
@@ -83,6 +83,7 @@ members = ["crate"]
 			self.non_crate_paths
 				.extend_from_slice(&[self.tempdir.path().to_path_buf(), workspace_manifest]);
 		}
+
 		if self.with_crate {
 			let crate_path = self.tempdir.path().join("crate");
 			let manifest_path = crate_path.join("Cargo.toml");
@@ -245,7 +246,8 @@ fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_workspace_dependency_without_default_features() {
+fn add_crate_to_dependencies_adds_workspace_dependency_without_default_features_to_crate_manifest()
+{
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
@@ -276,10 +278,10 @@ dependency = { workspace = true, default-features = false }
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_crates_io_optional_dependency() {
-	TestBuilder::default().with_crate().build().execute(|builder| {
+fn add_crate_to_dependencies_adds_crates_io_optional_dependency_to_workspace_manifest() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
+			&builder.workspace_manifest,
 			"dependency",
 			ManifestDependencyConfig::new(
 				ManifestDependencyOrigin::crates_io("1.0.0"),
@@ -291,15 +293,14 @@ fn add_crate_to_dependencies_adds_crates_io_optional_dependency() {
 		.is_ok());
 
 		assert_eq!(
-			std::fs::read_to_string(&builder.crate_manifest)
+			std::fs::read_to_string(&builder.workspace_manifest)
 				.expect("This should be readable; qed;"),
 			r#"
-[package]
-name = "test"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
+members = ["crate"]
 
-[dependencies]
+[workspace.dependencies]
 dependency = { version = "1.0.0", optional = true }
         "#
 		);
@@ -307,7 +308,7 @@ dependency = { version = "1.0.0", optional = true }
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_git_dependency_with_features() {
+fn add_crate_to_dependencies_adds_git_dependency_with_features_to_crate_manifest() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
@@ -338,10 +339,10 @@ dependency = { git = "https://some_url.com", branch = "stable", features = ["fea
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_local_dependency() {
-	TestBuilder::default().with_crate().build().execute(|builder| {
+fn add_crate_to_dependencies_adds_local_dependency_to_workspace_manifest() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
+			&builder.workspace_manifest,
 			"dependency",
 			ManifestDependencyConfig::new(
 				ManifestDependencyOrigin::local("../path".as_ref()),
@@ -353,15 +354,14 @@ fn add_crate_to_dependencies_adds_local_dependency() {
 		.is_ok());
 
 		assert_eq!(
-			std::fs::read_to_string(&builder.crate_manifest)
+			std::fs::read_to_string(&builder.workspace_manifest)
 				.expect("This should be readable; qed;"),
 			r#"
-[package]
-name = "test"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
+members = ["crate"]
 
-[dependencies]
+[workspace.dependencies]
 dependency = { path = "../path" }
         "#
 		);

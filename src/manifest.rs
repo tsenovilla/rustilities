@@ -183,8 +183,13 @@ pub fn find_crate_name<P: AsRef<Path>>(manifest_path: P) -> Option<String> {
 		.map(|package| package.name)
 }
 
-/// Given a manifest file path, this function adds a dependency to the `dependencies` section of the
+/// Given a manifest file path, this function adds a dependency to the dependencies section of the
 /// manifest based on the provided config.
+///
+/// If the path refers to a crate manifest, the dependency will be added to the `dependencies`
+/// section, while if the path refers to a workspace manifest the dependency will be added to
+/// `workspace.dependencies`. If none of these sections exist, a `dependencies` section will be
+/// added to the manifest including the new dependency.
 ///
 /// # Errors
 ///
@@ -359,6 +364,10 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 	let mut doc = std::fs::read_to_string(manifest_path.as_ref())?.parse::<DocumentMut>()?;
 	if let Some(Item::Table(dependencies)) = doc.get_mut("dependencies") {
 		do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
+	} else if let Some(Item::Table(workspace)) = doc.get_mut("workspace") {
+		if let Some(Item::Table(dependencies)) = workspace.get_mut("dependencies") {
+			do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
+		}
 	} else {
 		let mut dependencies = Table::new();
 		do_add_crate_to_dependencies(&mut dependencies, dependency_name, dependency_config);
