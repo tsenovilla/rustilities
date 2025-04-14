@@ -14,6 +14,7 @@ struct TestBuilder {
 	non_crate_paths: Vec<PathBuf>,
 	crate_manifest: PathBuf,
 	workspace_manifest: PathBuf,
+	crate_depencencies_table: Option<Table>,
 	tempdir_is_workspace: bool,
 	with_crate: bool,
 	with_non_crate: bool,
@@ -29,6 +30,7 @@ impl Default for TestBuilder {
 			non_crate_paths: Vec::new(),
 			crate_manifest: PathBuf::new(),
 			workspace_manifest: PathBuf::new(),
+			crate_depencencies_table: None,
 			tempdir_is_workspace: false,
 			with_crate: false,
 			with_non_crate: false,
@@ -121,6 +123,18 @@ edition = "2021"
 				main_path,
 				lib_path,
 			]);
+
+			let mut doc = std::fs::read_to_string(&self.crate_manifest)
+				.expect("The crate manifest should be readable; qed;")
+				.parse::<DocumentMut>()
+				.expect("The crate manifest is a valid toml; qed;");
+
+			self.crate_depencencies_table =
+				if let Some(Item::Table(dependencies)) = doc.get_mut("dependencies") {
+					Some(dependencies.clone())
+				} else {
+					unreachable!("Item defined in manifest; qed;")
+				};
 		}
 
 		if self.with_non_crate {
@@ -133,9 +147,9 @@ edition = "2021"
 		self
 	}
 
-	fn execute<F>(&self, test: F)
+	fn execute<F>(&mut self, test: F)
 	where
-		F: Fn(&Self) -> (),
+		F: Fn(&mut Self) -> (),
 	{
 		test(self);
 	}
@@ -246,77 +260,174 @@ fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_workspace_dependency_without_default_features_to_crate_manifest()
-{
+fn add_dependency_to_dependencies_table_workspace_dependency() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
-		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
 			"dependency",
 			ManifestDependencyConfig::new(
 				ManifestDependencyOrigin::workspace(),
-				false,
+				true,
 				vec![],
-				false
-			)
-		)
-		.is_ok());
-
-		assert_eq!(
-			std::fs::read_to_string(&builder.crate_manifest)
-				.expect("This should be readable; qed;"),
-			r#"
-[package]
-name = "test"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-dependency = { workspace = true, default-features = false }
-        "#
+				false,
+			),
 		);
+
+		assert_eq!(dependencies.to_string(), "dependency = { workspace = true }\n");
 	});
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_crates_io_optional_dependency_to_workspace_manifest() {
-	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
-		assert!(add_crate_to_dependencies(
-			&builder.workspace_manifest,
+fn add_dependency_to_dependencies_table_crates_io_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
 			"dependency",
 			ManifestDependencyConfig::new(
 				ManifestDependencyOrigin::crates_io("1.0.0"),
 				true,
 				vec![],
-				true
-			)
-		)
-		.is_ok());
+				false,
+			),
+		);
+
+		assert_eq!(dependencies.to_string(), "dependency = { version = \"1.0.0\" }\n");
+	});
+}
+
+#[test]
+fn add_dependency_to_dependencies_table_git_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::git("https://some_url.com", "stable"),
+				true,
+				vec![],
+				false,
+			),
+		);
 
 		assert_eq!(
-			std::fs::read_to_string(&builder.workspace_manifest)
-				.expect("This should be readable; qed;"),
-			r#"
-[workspace]
-resolver = "2"
-members = ["crate"]
-
-[workspace.dependencies]
-dependency = { version = "1.0.0", optional = true }
-        "#
+			dependencies.to_string(),
+			"dependency = { git = \"https://some_url.com\", branch = \"stable\" }\n"
 		);
 	});
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_git_dependency_with_features_to_crate_manifest() {
+fn add_dependency_to_dependencies_table_local_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::local("../path".as_ref()),
+				true,
+				vec![],
+				false,
+			),
+		);
+
+		assert_eq!(dependencies.to_string(), "dependency = { path = \"../path\" }\n");
+	});
+}
+
+#[test]
+fn add_dependency_to_dependencies_table_dependency_no_default_features() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::local("../path".as_ref()),
+				false,
+				vec![],
+				false,
+			),
+		);
+
+		assert_eq!(
+			dependencies.to_string(),
+			"dependency = { path = \"../path\", default-features = false }\n"
+		);
+	});
+}
+
+#[test]
+fn add_dependency_to_dependencies_table_dependency_with_features() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::local("../path".as_ref()),
+				true,
+				vec!["feature_a", "feature_b"],
+				false,
+			),
+		);
+
+		assert_eq!(
+			dependencies.to_string(),
+			"dependency = { path = \"../path\", features = [\"feature_a\", \"feature_b\"] }\n"
+		);
+	});
+}
+
+#[test]
+fn add_dependency_to_dependencies_table_optional_dependency() {
+	TestBuilder::default().with_crate().build().execute(|builder| {
+		let dependencies =
+			builder.crate_depencencies_table.as_mut().expect("This should be Some; qed;");
+
+		add_dependency_to_dependencies_table(
+			dependencies,
+			"dependency",
+			ManifestDependencyConfig::new(
+				ManifestDependencyOrigin::local("../path".as_ref()),
+				true,
+				vec![],
+				true,
+			),
+		);
+
+		assert_eq!(
+			dependencies.to_string(),
+			"dependency = { path = \"../path\", optional = true }\n"
+		);
+	});
+}
+
+#[test]
+fn add_crate_to_dependencies_crate_manifest_with_dependencies_section() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.crate_manifest,
 			"dependency",
 			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::git("https://some_url.com", "stable"),
+				ManifestDependencyOrigin::local("../path".as_ref()),
 				true,
-				vec!["feature_a", "feature_b"],
+				vec![],
 				false
 			)
 		)
@@ -332,14 +443,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dependency = { git = "https://some_url.com", branch = "stable", features = ["feature_a", "feature_b"] }
+dependency = { path = "../path" }
         "#
 		);
 	});
 }
 
 #[test]
-fn add_crate_to_dependencies_adds_local_dependency_to_workspace_manifest() {
+fn add_crate_to_dependencies_workspace_manifest_with_dependencies_section() {
 	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
 		assert!(add_crate_to_dependencies(
 			&builder.workspace_manifest,
@@ -369,7 +480,7 @@ dependency = { path = "../path" }
 }
 
 #[test]
-fn add_crate_to_dependencies_works_for_crate_manifest_without_dependencies_section() {
+fn add_crate_to_dependencies_crate_manifest_without_dependencies_section() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		std::fs::write(
 			&builder.crate_manifest,
@@ -409,7 +520,7 @@ dependency = { workspace = true }
 }
 
 #[test]
-fn add_crate_to_dependencies_works_for_workspace_manifest_without_dependencies_section() {
+fn add_crate_to_dependencies_workspace_manifest_without_dependencies_section() {
 	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
 		std::fs::write(
 			&builder.workspace_manifest,

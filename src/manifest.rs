@@ -279,108 +279,112 @@ pub fn add_crate_to_dependencies<P: AsRef<Path>>(
 	dependency_name: &str,
 	dependency_config: ManifestDependencyConfig,
 ) -> Result<(), Error> {
-	fn do_add_crate_to_dependencies(
-		dependencies: &mut Table,
-		dependency_name: &str,
-		dependency_config: ManifestDependencyConfig,
-	) {
-		let mut dependency_declaration = InlineTable::new();
-		match &dependency_config.origin {
-			ManifestDependencyOrigin::Workspace => {
-				dependency_declaration.insert(
-					"workspace",
-					toml_edit::value(true)
-						.into_value()
-						.expect("true is bool, so value(true) is Value::Boolean;qed;"),
-				);
-			},
-			ManifestDependencyOrigin::Git { url, branch } => {
-				dependency_declaration.insert(
-					"git",
-					toml_edit::value(url.to_owned())
-						.into_value()
-						.expect("url is String, so value(url) is Value::String; qed;"),
-				);
-				dependency_declaration.insert(
-					"branch",
-					toml_edit::value(branch.to_owned())
-						.into_value()
-						.expect("branch is String, so value(branch) is Value::String; qed;"),
-				);
-			},
-			ManifestDependencyOrigin::CratesIO { version } => {
-				dependency_declaration.insert(
-					"version",
-					toml_edit::value(version.to_owned())
-						.into_value()
-						.expect("version is String, so value(version) is Value::String; qed;"),
-				);
-			},
-			ManifestDependencyOrigin::Local { relative_path } => {
-				dependency_declaration.insert(
-					"path",
-					toml_edit::value(relative_path.to_string_lossy().into_owned())
-						.into_value()
-						.expect(
-						"relative_path is String, so value(relative_path) is Value::String; qed;",
-					),
-				);
-			},
-		}
-
-		if !dependency_config.default_features {
-			dependency_declaration.insert(
-				"default-features",
-				toml_edit::value(false)
-					.into_value()
-					.expect("false is bool so value(false) is Value::Boolean; qed;"),
-			);
-		}
-
-		if !dependency_config.features.is_empty() {
-			let mut features = Array::new();
-			dependency_config
-				.features
-				.iter()
-				.for_each(|feature| features.push(feature.to_owned()));
-			dependency_declaration.insert(
-				"features",
-				toml_edit::value(features)
-					.into_value()
-					.expect("features is Array, so value(features) is Value::Array; qed;"),
-			);
-		}
-
-		if dependency_config.optional {
-			dependency_declaration.insert(
-				"optional",
-				toml_edit::value(true)
-					.into_value()
-					.expect("true is bool so value(true) is Value::Boolean; qed;"),
-			);
-		}
-
-		dependencies.insert(dependency_name, toml_edit::value(dependency_declaration));
-	}
-
 	let mut doc = std::fs::read_to_string(manifest_path.as_ref())?.parse::<DocumentMut>()?;
 	if let Some(Item::Table(dependencies)) = doc.get_mut("dependencies") {
-		do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
+		add_dependency_to_dependencies_table(dependencies, dependency_name, dependency_config);
 	} else if let Some(Item::Table(workspace)) = doc.get_mut("workspace") {
 		if let Some(Item::Table(dependencies)) = workspace.get_mut("dependencies") {
-			do_add_crate_to_dependencies(dependencies, dependency_name, dependency_config);
+			add_dependency_to_dependencies_table(dependencies, dependency_name, dependency_config);
 		} else {
 			let mut dependencies = Table::new();
-			do_add_crate_to_dependencies(&mut dependencies, dependency_name, dependency_config);
+			add_dependency_to_dependencies_table(
+				&mut dependencies,
+				dependency_name,
+				dependency_config,
+			);
 			workspace.insert("dependencies", Item::Table(dependencies));
 		}
 	} else {
 		let mut dependencies = Table::new();
-		do_add_crate_to_dependencies(&mut dependencies, dependency_name, dependency_config);
+		add_dependency_to_dependencies_table(&mut dependencies, dependency_name, dependency_config);
 		doc.insert("dependencies", Item::Table(dependencies));
 	}
 
 	std::fs::write(manifest_path, doc.to_string())?;
 
 	Ok(())
+}
+
+fn add_dependency_to_dependencies_table(
+	dependencies: &mut Table,
+	dependency_name: &str,
+	dependency_config: ManifestDependencyConfig,
+) {
+	let mut dependency_declaration = InlineTable::new();
+	match &dependency_config.origin {
+		ManifestDependencyOrigin::Workspace => {
+			dependency_declaration.insert(
+				"workspace",
+				toml_edit::value(true)
+					.into_value()
+					.expect("true is bool, so value(true) is Value::Boolean;qed;"),
+			);
+		},
+		ManifestDependencyOrigin::Git { url, branch } => {
+			dependency_declaration.insert(
+				"git",
+				toml_edit::value(url.to_owned())
+					.into_value()
+					.expect("url is String, so value(url) is Value::String; qed;"),
+			);
+			dependency_declaration.insert(
+				"branch",
+				toml_edit::value(branch.to_owned())
+					.into_value()
+					.expect("branch is String, so value(branch) is Value::String; qed;"),
+			);
+		},
+		ManifestDependencyOrigin::CratesIO { version } => {
+			dependency_declaration.insert(
+				"version",
+				toml_edit::value(version.to_owned())
+					.into_value()
+					.expect("version is String, so value(version) is Value::String; qed;"),
+			);
+		},
+		ManifestDependencyOrigin::Local { relative_path } => {
+			dependency_declaration.insert(
+				"path",
+				toml_edit::value(relative_path.to_string_lossy().into_owned())
+					.into_value()
+					.expect(
+						"relative_path is String, so value(relative_path) is Value::String; qed;",
+					),
+			);
+		},
+	}
+
+	if !dependency_config.default_features {
+		dependency_declaration.insert(
+			"default-features",
+			toml_edit::value(false)
+				.into_value()
+				.expect("false is bool so value(false) is Value::Boolean; qed;"),
+		);
+	}
+
+	if !dependency_config.features.is_empty() {
+		let mut features = Array::new();
+		dependency_config
+			.features
+			.iter()
+			.for_each(|feature| features.push(feature.to_owned()));
+		dependency_declaration.insert(
+			"features",
+			toml_edit::value(features)
+				.into_value()
+				.expect("features is Array, so value(features) is Value::Array; qed;"),
+		);
+	}
+
+	if dependency_config.optional {
+		dependency_declaration.insert(
+			"optional",
+			toml_edit::value(true)
+				.into_value()
+				.expect("true is bool so value(true) is Value::Boolean; qed;"),
+		);
+	}
+
+	dependencies.insert(dependency_name, toml_edit::value(dependency_declaration));
 }
