@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 use super::*;
-use syn::{parse_quote, Attribute, ImplItem, Item, TraitItem};
+use syn::{Attribute, ImplItem, Item, TraitItem, parse_quote};
 
 #[test]
 fn attrs_item_const() {

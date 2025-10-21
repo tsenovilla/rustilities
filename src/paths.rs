@@ -26,9 +26,11 @@ pub fn prefix_with_current_dir<P: AsRef<Path>>(path: P) -> PathBuf {
 			// If the first component is a normal component, we prefix the path with the current dir
 			if let Component::Normal(_) = components[0] {
 				return <Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).join(path);
+			} else {
+				return path.to_path_buf();
 			}
 		}
-		path.to_path_buf()
+		<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).to_path_buf()
 	}
 	do_prefix_with_current_dir(path.as_ref())
 }

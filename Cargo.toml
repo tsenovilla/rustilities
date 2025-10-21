@@ -1,10 +1,10 @@
 [package]
 name = "rustilities"
-version = "2.2.1"
+version = "3.0.0"
 repository = "https://github.com/tsenovilla/rustilities"
 license = "GPL-3.0"
-rust-version = "1.84.0"
-edition = "2021"
+rust-version = "1.90.0"
+edition = "2024"
 description = "This crate offers a few utils for Rust development"
 documentation = "https://docs.rs/rustilities"
 
@@ -18,7 +18,7 @@ proc-macro2 = { version = "1.0.93", optional = true }
 [features]
 paths = []
 fmt = []
-manifest = ["cargo_toml", "toml_edit"]
+manifest = ["cargo_toml", "toml_edit", "paths"]
 parsing = ["syn", "proc-macro2"]
 
 [dev-dependencies]

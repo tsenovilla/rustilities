@@ -74,7 +74,7 @@ pub fn find_innermost_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 		}
 		None
 	}
-	do_find_innermost_manifest(path.as_ref())
+	do_find_innermost_manifest(&crate::paths::prefix_with_current_dir(path))
 }
 
 /// Given a path, this function finds the manifest corresponding to the workspace
@@ -145,7 +145,7 @@ pub fn find_workspace_manifest<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
 		}
 		None
 	}
-	do_find_workspace_manifest(path.as_ref())
+	do_find_workspace_manifest(&crate::paths::prefix_with_current_dir(path))
 }
 
 /// Given a path, this function tries to determine if it points to a crate's manifest and if that's

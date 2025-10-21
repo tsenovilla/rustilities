@@ -5,6 +5,7 @@ use std::{
 	fs::{File, Permissions},
 	io::ErrorKind,
 	os::unix::fs::PermissionsExt,
+	path::Component,
 };
 use tempfile::TempDir;
 
@@ -19,6 +20,10 @@ struct TestBuilder {
 	with_crate: bool,
 	with_non_crate: bool,
 	with_read_only_manifest: bool,
+	calling_dir_override: Option<CallingDirOverride>,
+	calling_dir_override_path: Option<PathBuf>,
+	workspace_dir_from_overrided_calling_dir: Option<PathBuf>,
+	crate_dir_from_overrided_calling_dir: Option<PathBuf>,
 }
 
 impl Default for TestBuilder {
@@ -35,8 +40,17 @@ impl Default for TestBuilder {
 			with_crate: false,
 			with_non_crate: false,
 			with_read_only_manifest: false,
+			calling_dir_override: None,
+			calling_dir_override_path: None,
+			workspace_dir_from_overrided_calling_dir: None,
+			crate_dir_from_overrided_calling_dir: None,
 		}
 	}
+}
+
+enum CallingDirOverride {
+	WorkspaceRoot,
+	CrateRoot,
 }
 
 impl TestBuilder {
@@ -57,6 +71,11 @@ impl TestBuilder {
 
 	fn with_read_only_manifest(mut self) -> Self {
 		self.with_read_only_manifest = true;
+		self
+	}
+
+	fn with_calling_dir_override(mut self, calling_dir: CallingDirOverride) -> Self {
+		self.calling_dir_override = Some(calling_dir);
 		self
 	}
 
@@ -144,6 +163,53 @@ edition = "2021"
 			self.non_crate_paths.extend_from_slice(&[non_crate_path, non_crate_inner_path]);
 		}
 
+		if let Some(calling_dir_override) = &self.calling_dir_override {
+			match calling_dir_override {
+				CallingDirOverride::WorkspaceRoot => {
+					self.calling_dir_override_path = Some(self.tempdir.path().to_path_buf());
+					self.workspace_dir_from_overrided_calling_dir = Some(
+						<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir)
+							.join("Cargo.toml"),
+					);
+					self.crate_dir_from_overrided_calling_dir = Some(
+						<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir)
+							.join("crate")
+							.join("Cargo.toml"),
+					);
+				},
+				CallingDirOverride::CrateRoot if !self.crate_paths.is_empty() => {
+					self.calling_dir_override_path = Some(self.crate_paths[0].clone());
+					self.crate_dir_from_overrided_calling_dir = Some(
+						<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir)
+							.join("Cargo.toml"),
+					);
+				},
+				_ => panic!(
+					"If calling dir is crate, the builder needs to be built using `with_crate`"
+				),
+			}
+
+			self.crate_paths = self
+				.crate_paths
+				.iter()
+				.map(|path| {
+					path.strip_prefix(&self.calling_dir_override_path.as_ref().unwrap())
+						.unwrap_or(path)
+						.to_path_buf()
+				})
+				.collect();
+
+			self.non_crate_paths = self
+				.non_crate_paths
+				.iter()
+				.map(|path| {
+					path.strip_prefix(&self.calling_dir_override_path.as_ref().unwrap())
+						.unwrap_or(path)
+						.to_path_buf()
+				})
+				.collect();
+		}
+
 		self
 	}
 
@@ -151,7 +217,15 @@ edition = "2021"
 	where
 		F: Fn(&mut Self) -> (),
 	{
-		test(self);
+		if let Some(calling_dir) = &self.calling_dir_override_path {
+			let original_dir = std::env::current_dir().unwrap();
+
+			std::env::set_current_dir(calling_dir).unwrap();
+			test(self);
+			std::env::set_current_dir(original_dir).unwrap();
+		} else {
+			test(self);
+		}
 	}
 }
 
@@ -165,6 +239,22 @@ fn find_innermost_manifest_finds_manifest_from_different_parts_of_a_crate() {
 			));
 		});
 	})
+}
+
+#[test]
+fn find_innermost_manifest_finds_manifest_from_different_parts_of_a_crate_if_called_from_crate_root()
+ {
+	TestBuilder::default()
+		.with_crate()
+		.with_calling_dir_override(CallingDirOverride::CrateRoot)
+		.build()
+		.execute(|builder| {
+            builder.crate_paths.iter().for_each(|path|{
+			assert!(matches!(
+				find_innermost_manifest(path),
+				Some(ref manifest_path) if manifest_path == builder.crate_dir_from_overrided_calling_dir.as_ref().unwrap()
+			));
+		});});
 }
 
 #[test]
@@ -188,6 +278,53 @@ fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_worksp
 				assert!(matches!(
 					find_innermost_manifest(path),
 					Some(ref manifest_path) if manifest_path == &builder.workspace_manifest
+				));
+			});
+		})
+}
+
+#[test]
+fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_workspace_if_called_from_crate_root()
+ {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.with_calling_dir_override(CallingDirOverride::CrateRoot)
+		.build()
+		.execute(|builder| {
+			// For crate paths, the innermost manifest is the crate manifest
+			builder.crate_paths.iter().for_each(|path| {
+				assert!(matches!(
+					find_innermost_manifest(path),
+					Some(ref manifest_path) if manifest_path == builder.crate_dir_from_overrided_calling_dir.as_ref().unwrap()
+				));
+			});
+		})
+}
+
+#[test]
+fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_workspace_if_called_from_workspace_root()
+ {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.with_non_crate()
+		.with_calling_dir_override(CallingDirOverride::WorkspaceRoot)
+		.build()
+		.execute(|builder| {
+			// For crate paths, the innermost manifest is the crate manifest
+			builder.crate_paths.iter().for_each(|path| {
+				assert!(matches!(
+					find_innermost_manifest(path),
+					Some(ref manifest_path) if manifest_path == builder.crate_dir_from_overrided_calling_dir.as_ref().unwrap()
+				));
+			});
+
+			// While for these paths, the innermost manifest is the workspace manifest
+			builder.non_crate_paths.iter().for_each(|path| {
+				assert!(matches!(
+					find_innermost_manifest(path),
+					Some(ref manifest_path) if manifest_path == builder.workspace_dir_from_overrided_calling_dir.as_ref().unwrap()
 				));
 			});
 		})
@@ -222,6 +359,32 @@ fn find_workspace_manifest_finds_manifest_from_different_parts_of_a_workspace() 
 				assert!(matches!(
 					find_workspace_manifest(path),
 					Some(ref manifest_path) if manifest_path == &builder.workspace_manifest
+				));
+			});
+		});
+}
+
+#[test]
+fn find_workspace_manifest_finds_manifest_from_different_parts_of_a_workspace_if_called_from_the_workspace_root()
+ {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.with_non_crate()
+		.with_calling_dir_override(CallingDirOverride::WorkspaceRoot)
+		.build()
+		.execute(|builder| {
+			builder.crate_paths.iter().for_each(|path| {
+				assert!(matches!(
+					find_workspace_manifest(path),
+					Some(ref manifest_path) if manifest_path == builder.workspace_dir_from_overrided_calling_dir.as_ref().unwrap()
+				));
+			});
+
+			builder.non_crate_paths.iter().for_each(|path| {
+				assert!(matches!(
+					find_workspace_manifest(path),
+					Some(ref manifest_path) if manifest_path == builder.workspace_dir_from_overrided_calling_dir.as_ref().unwrap()
 				));
 			});
 		});
@@ -421,17 +584,19 @@ fn add_dependency_to_dependencies_table_optional_dependency() {
 #[test]
 fn add_crate_to_dependencies_crate_manifest_with_dependencies_section() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
-		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
-			"dependency",
-			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::local("../path".as_ref()),
-				true,
-				vec![],
-				false
+		assert!(
+			add_crate_to_dependencies(
+				&builder.crate_manifest,
+				"dependency",
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::local("../path".as_ref()),
+					true,
+					vec![],
+					false
+				)
 			)
-		)
-		.is_ok());
+			.is_ok()
+		);
 
 		assert_eq!(
 			std::fs::read_to_string(&builder.crate_manifest)
@@ -452,17 +617,19 @@ dependency = { path = "../path" }
 #[test]
 fn add_crate_to_dependencies_workspace_manifest_with_dependencies_section() {
 	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
-		assert!(add_crate_to_dependencies(
-			&builder.workspace_manifest,
-			"dependency",
-			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::local("../path".as_ref()),
-				true,
-				vec![],
-				false
+		assert!(
+			add_crate_to_dependencies(
+				&builder.workspace_manifest,
+				"dependency",
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::local("../path".as_ref()),
+					true,
+					vec![],
+					false
+				)
 			)
-		)
-		.is_ok());
+			.is_ok()
+		);
 
 		assert_eq!(
 			std::fs::read_to_string(&builder.workspace_manifest)
@@ -492,17 +659,19 @@ edition = "2021"
 "#,
 		)
 		.expect("Manifest should be writable; qed;");
-		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
-			"dependency",
-			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::workspace(),
-				true,
-				vec![],
-				false
+		assert!(
+			add_crate_to_dependencies(
+				&builder.crate_manifest,
+				"dependency",
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::workspace(),
+					true,
+					vec![],
+					false
+				)
 			)
-		)
-		.is_ok());
+			.is_ok()
+		);
 		assert_eq!(
 			std::fs::read_to_string(&builder.crate_manifest)
 				.expect("This should be readable; qed;"),
@@ -532,17 +701,19 @@ members = ["crate"]
 		)
 		.expect("Manifest should be writable; qed;");
 
-		assert!(add_crate_to_dependencies(
-			&builder.workspace_manifest,
-			"dependency",
-			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::crates_io("0.1.0"),
-				true,
-				vec![],
-				false
+		assert!(
+			add_crate_to_dependencies(
+				&builder.workspace_manifest,
+				"dependency",
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::crates_io("0.1.0"),
+					true,
+					vec![],
+					false
+				)
 			)
-		)
-		.is_ok());
+			.is_ok()
+		);
 		assert_eq!(
 			std::fs::read_to_string(&builder.workspace_manifest)
 				.expect("This should be readable; qed;"),
@@ -562,17 +733,19 @@ dependency = { version = "0.1.0" }
 fn add_crate_to_dependencies_works_for_empty_manifest() {
 	TestBuilder::default().with_crate().build().execute(|builder| {
 		std::fs::write(&builder.crate_manifest, "").expect("Manifest should be writable; qed;");
-		assert!(add_crate_to_dependencies(
-			&builder.crate_manifest,
-			"dependency",
-			ManifestDependencyConfig::new(
-				ManifestDependencyOrigin::workspace(),
-				true,
-				vec![],
-				false
+		assert!(
+			add_crate_to_dependencies(
+				&builder.crate_manifest,
+				"dependency",
+				ManifestDependencyConfig::new(
+					ManifestDependencyOrigin::workspace(),
+					true,
+					vec![],
+					false
+				)
 			)
-		)
-		.is_ok());
+			.is_ok()
+		);
 		assert_eq!(
 			std::fs::read_to_string(&builder.crate_manifest)
 				.expect("This should be readable; qed;"),

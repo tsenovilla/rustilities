@@ -47,9 +47,9 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Run unit tests
         run: |
-          cargo test --features paths,manifest,parsing --lib
+          cargo test --features paths,parsing --lib
           # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
-          cargo test --features fmt --lib -- --test-threads=1
+          cargo test --features fmt,manifest --lib -- --test-threads=1
 
   doc-tests:
     runs-on: ubuntu-latest
