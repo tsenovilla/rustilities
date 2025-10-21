@@ -806,3 +806,197 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_written() {
 			));
 		});
 }
+
+#[test]
+fn add_crate_to_workspace_works_if_members_exist() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
+		let crate_path = builder.tempdir.path().join("crate2");
+		assert!(add_crate_to_workspace(&builder.workspace_manifest, crate_path).is_ok());
+
+		let doc = std::fs::read_to_string(&builder.workspace_manifest)
+			.unwrap()
+			.parse::<DocumentMut>()
+			.unwrap();
+		if let Some(Item::Table(workspace_table)) = doc.get("workspace") {
+			if let Some(Item::Value(members_array)) = workspace_table.get("members") {
+				if let Value::Array(array) = members_array {
+					assert!(array.into_iter().any(
+						|member| if let Value::String(member) = member {
+							member.clone().into_value() == "crate2"
+						} else {
+							false
+						}
+					));
+				} else {
+					panic!("Failed");
+				}
+			} else {
+				panic!("Failed");
+			}
+		} else {
+			panic!("Failed");
+		}
+	});
+}
+
+#[test]
+fn add_crate_to_workspace_works_if_members_doesnt_exist() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
+		std::fs::write(
+			&builder.workspace_manifest,
+			r#"
+[workspace]
+resolver = "2"
+
+[workspace.dependencies]
+        "#,
+		)
+		.expect("The manifest should be writable; qed;");
+		let crate_path = builder.tempdir.path().join("crate2");
+		assert!(add_crate_to_workspace(&builder.workspace_manifest, crate_path).is_ok());
+
+		let doc = std::fs::read_to_string(&builder.workspace_manifest)
+			.unwrap()
+			.parse::<DocumentMut>()
+			.unwrap();
+		if let Some(Item::Table(workspace_table)) = doc.get("workspace") {
+			if let Some(Item::Value(members_array)) = workspace_table.get("members") {
+				if let Value::Array(array) = members_array {
+					assert!(array.into_iter().any(
+						|member| if let Value::String(member) = member {
+							member.clone().into_value() == "crate2"
+						} else {
+							false
+						}
+					));
+				} else {
+					panic!("Failed");
+				}
+			} else {
+				panic!("Failed");
+			}
+		} else {
+			panic!("Failed");
+		}
+	});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_the_workspace_manifest_path_cannot_be_read() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
+		assert!(matches!(
+			add_crate_to_workspace(
+			builder.tempdir.path().join("unexisting/path/Cargo.toml"),
+				"dependency",
+			),
+			Err(Error::IO(err)) if err.kind() == ErrorKind::NotFound
+		));
+	});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_manifest_path_cannot_be_parsed_as_manifest() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.build()
+		.execute(|builder| {
+			assert!(matches!(
+				add_crate_to_workspace(
+					&builder.crate_paths[3], // main.rs path
+					"dependency",
+				),
+				Err(Error::TomlEdit(_))
+			));
+		});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_crate_path_isnt_prefixed_by_workspace_path() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.build()
+		.execute(|builder| {
+			assert!(matches!(
+				add_crate_to_workspace(&builder.workspace_manifest, "dependency",),
+				Err(Error::StripPrefixError(_))
+			));
+		});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_members_section_isnt_an_array() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.build()
+		.execute(|builder| {
+			std::fs::write(
+				&builder.workspace_manifest,
+				r#"
+[workspace]
+resolver = "2"
+members = "1"
+
+[workspace.dependencies]
+        "#,
+			)
+			.expect("The manifest should be writable; qed;");
+
+			assert!(matches!(
+				add_crate_to_workspace(
+					&builder.workspace_manifest,
+					&builder.tempdir.path().join("dependency"),
+				),
+				Err(Error::Descriptive(expected_error)) if expected_error == "The provided manifest path members field is corrupted" 
+			));
+		});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_the_target_manifest_isnt_a_workspace_manifest() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_crate()
+		.build()
+		.execute(|builder| {
+			std::fs::write(
+				&builder.workspace_manifest,
+				r#"
+[package]
+name = "test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+        "#,
+			)
+			.expect("The manifest should be writable; qed;");
+
+			assert!(matches!(
+				add_crate_to_workspace(
+					&builder.workspace_manifest,
+					&builder.tempdir.path().join("dependency"),
+				),
+				Err(Error::Descriptive(expected_error)) if expected_error == "The provided manifest path isn't a workspace manifest"
+			));
+		});
+}
+
+#[test]
+fn add_crate_to_workspace_fails_if_manifest_path_cannot_be_written() {
+	TestBuilder::default()
+		.tempdir_is_workspace()
+		.with_read_only_manifest()
+		.build()
+		.execute(|builder| {
+			assert!(matches!(
+				add_crate_to_workspace(
+				&builder.workspace_manifest,
+				&builder.tempdir.path().join("dependency"),
+				),
+				Err(Error::IO(err)) if err.kind() == ErrorKind::PermissionDenied
+			));
+		});
+}

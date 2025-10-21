@@ -76,12 +76,12 @@ jobs:
       - name: Generate code coverage
         run: |
           cargo llvm-cov \
-          --features paths,manifest,parsing \
+          --features paths,parsing \
           --codecov \
           --ignore-filename-regex "/tests\.rs$" \
           --output-path cov_no_fmt.json
           cargo llvm-cov \
-          --features fmt \
+          --features fmt,manifest \
           --codecov \
           --ignore-filename-regex "/tests\.rs$" \
           --output-path cov_fmt.json \

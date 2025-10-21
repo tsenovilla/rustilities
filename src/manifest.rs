@@ -7,7 +7,7 @@ mod types;
 use crate::Error;
 use cargo_toml::Manifest;
 use std::path::{Path, PathBuf};
-use toml_edit::{Array, DocumentMut, InlineTable, Item, Table};
+use toml_edit::{Array, DocumentMut, InlineTable, Item, Table, Value};
 pub use types::{ManifestDependencyConfig, ManifestDependencyOrigin};
 
 /// Given a path, this function finds the manifest corresponding to the innermost crate/workspace
@@ -387,4 +387,103 @@ fn add_dependency_to_dependencies_table(
 	}
 
 	dependencies.insert(dependency_name, toml_edit::value(dependency_declaration));
+}
+
+/// Given a workspace manifest file path, and a path to a crate contained inside the workspace this
+/// function adds the crate to the `members` section of the workspace.
+///
+/// # Errors
+///
+/// - If the workspace path cannot be read.
+/// - If the workspace path doesn't correspond to a valid Rust manifest (empty files are valid).
+/// - If the crate path isn't prefixed by the workspace path.
+/// - If the `members` section isn't an array
+/// - If the workspace path doesn't correspond to a workspace manifest.
+/// - If the path cannot overwritten.
+///
+/// # Examples
+///
+/// ```
+/// use std::{fs::File, io::ErrorKind};
+/// use rustilities::{Error, manifest::{ManifestDependencyOrigin, ManifestDependencyConfig}};
+///
+/// let tempdir = tempfile::tempdir().unwrap();
+/// let manifest_path = tempdir.path().join("Cargo.toml");
+/// std::fs::write(
+///     &manifest_path,
+///     r#"
+/// [workspace]
+/// resolver = "2"
+/// members = ["crate"]
+///
+/// [workspace.dependencies]
+/// "#,
+/// ).unwrap();
+///
+/// // Add some dependencies
+/// assert!(rustilities::manifest::add_crate_to_workspace(
+///     &manifest_path,
+///     &tempdir.path().join("other_crate")    
+/// )
+/// .is_ok());
+///
+/// // Check that the dependencies was added to the manifest
+/// assert_eq!(
+///     std::fs::read_to_string(&manifest_path).unwrap(),
+///     r#"
+/// [workspace]
+/// resolver = "2"
+/// members = ["crate", "other_crate"]
+///
+/// [workspace.dependencies]
+/// "#,
+/// );
+/// ```
+pub fn add_crate_to_workspace<P: AsRef<Path>, Q: AsRef<Path>>(
+	workspace_toml: P,
+	crate_path: Q,
+) -> Result<(), Error> {
+	fn do_add_crate_to_workspace(workspace_toml: &Path, crate_path: &Path) -> Result<(), Error> {
+		let mut doc = std::fs::read_to_string(workspace_toml)?.parse::<DocumentMut>()?;
+
+		// Find the workspace dir
+		let workspace_dir = workspace_toml.parent().expect("A file always lives inside a dir; qed");
+		// Find the relative path to the crate from the workspace root
+		let crate_relative_path = crate_path.strip_prefix(workspace_dir)?;
+
+		if let Some(Item::Table(workspace_table)) = doc.get_mut("workspace") {
+			if let Some(Item::Value(members_array)) = workspace_table.get_mut("members") {
+				if let Value::Array(array) = members_array {
+					let crate_relative_path =
+						crate_relative_path.to_str().expect("target's always a valid string; qed");
+					let already_in_array = array.iter().any(
+						|member| matches!(member.as_str(), Some(s) if s == crate_relative_path),
+					);
+					if !already_in_array {
+						array.push(crate_relative_path);
+					}
+				} else {
+					return Err(Error::Descriptive(
+						"The provided manifest path members field is corrupted".to_owned(),
+					));
+				}
+			} else {
+				let mut toml_array = Array::new();
+				toml_array.push(
+					crate_relative_path
+						.to_str()
+						.expect("Path::to_str() is always a valid string; qed"),
+				);
+				workspace_table["members"] = toml_edit::value(toml_array);
+			}
+		} else {
+			return Err(Error::Descriptive(
+				"The provided manifest path isn't a workspace manifest".to_owned(),
+			));
+		}
+
+		std::fs::write(workspace_toml, doc.to_string())?;
+		Ok(())
+	}
+	do_add_crate_to_workspace(workspace_toml.as_ref(), crate_path.as_ref())
 }
