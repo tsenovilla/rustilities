@@ -882,6 +882,17 @@ resolver = "2"
 }
 
 #[test]
+fn add_crate_to_workspace_hasnt_effect_if_member_already_present() {
+	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
+		let crate_path = builder.tempdir.path().join("crate");
+		let manifest_before_call = std::fs::read_to_string(&builder.workspace_manifest).unwrap();
+		assert!(add_crate_to_workspace(&builder.workspace_manifest, crate_path).is_ok());
+		let manifest_after_call = std::fs::read_to_string(&builder.workspace_manifest).unwrap();
+		assert_eq!(manifest_before_call, manifest_after_call);
+	});
+}
+
+#[test]
 fn add_crate_to_workspace_fails_if_the_workspace_manifest_path_cannot_be_read() {
 	TestBuilder::default().tempdir_is_workspace().build().execute(|builder| {
 		assert!(matches!(
