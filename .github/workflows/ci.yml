@@ -192,7 +192,7 @@ jobs:
           retention-days: 1
 
   upload-coverage:
-    needs: coverage-run-tests
+    needs: run-tests-with-coverage
     runs-on: ubuntu-latest
     env:
       CARGO_TARGET_DIR: target/llvm-cov-target
