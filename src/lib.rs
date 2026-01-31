@@ -30,4 +30,8 @@ pub mod manifest;
 #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
 pub mod parsing;
 
+#[cfg(feature = "universal-test-builder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "universal-test-builder")))]
+pub mod universal_test_builder;
+
 pub use error::Error;

@@ -8,9 +8,9 @@ description = "This crate offers a few utils for Rust development"
 documentation = "https://docs.rs/rustilities"
 
 [dependencies]
-cargo_toml = { version = "0.21.0", optional = true }
+cargo_toml = { version = "0.22.3", optional = true }
 thiserror = "2.0.11"
-toml_edit = { version = "0.22.24", optional = true }
+toml_edit = { version = "0.23.9", optional = true }
 syn = { version = "2.0.98", features = ["full", "parsing", "extra-traits"], optional = true }
 proc-macro2 = { version = "1.0.93", optional = true } 
 
@@ -19,6 +19,7 @@ paths = []
 fmt = []
 manifest = ["cargo_toml", "toml_edit", "paths"]
 parsing = ["syn", "proc-macro2"]
+universal-test-builder = []
 
 [dev-dependencies]
 tempfile = "3.16.0"
