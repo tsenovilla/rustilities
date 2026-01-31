@@ -139,7 +139,11 @@ jobs:
       - name: Build and archive instrumented tests
         run: |
           source <(cargo llvm-cov show-env --export-prefix)
-          cargo nextest archive --workspace --lib  --archive-file nextest-archive.tar.zst
+          cargo nextest archive \
+           --all-features \
+           --workspace \
+           --lib \
+           --archive-file nextest-archive.tar.zst
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -160,6 +164,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
@@ -176,10 +183,9 @@ jobs:
           cargo llvm-cov nextest \
           --archive-file nextest-archive.tar.zst \
           --partition count:${{ matrix.partition }}/4 \
-          --ignore-filename-regex "/tests\.rs$"
+          --ignore-filename-regex "/tests\.rs$" \
           --no-report \
           --no-fail-fast \
-          --nocapture \
           --status-level all
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
