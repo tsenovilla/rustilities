@@ -108,7 +108,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check no default features
-        run: cargo doc --locked --no-deps
+        run: cargo doc --no-deps
 
   build-tests-with-coverage:
     runs-on: ubuntu-latest
@@ -139,7 +139,7 @@ jobs:
       - name: Build and archive instrumented tests
         run: |
           source <(cargo llvm-cov show-env --export-prefix)
-          cargo nextest archive --locked --workspace --lib  --archive-file nextest-archive.tar.zst
+          cargo nextest archive --workspace --lib  --archive-file nextest-archive.tar.zst
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
