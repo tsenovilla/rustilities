@@ -1,0 +1,31 @@
+[package]
+name = "rustilities"
+version.workspace = true
+repository.workspace = true 
+license.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+description.workspace = true
+documentation.workspace = true
+
+[dependencies]
+cargo_toml = { workspace = true, optional = true }
+proc-macro2 = { workspace = true, optional = true } 
+rustilities-procedural = { version = "3.0.1", optional = true }
+syn = { workspace = true, features = ["full", "parsing", "extra-traits"], optional = true }
+thiserror =  { workspace = true }
+toml_edit = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+paths = []
+fmt = []
+manifest = ["cargo_toml", "toml_edit", "paths"]
+parsing = ["syn", "proc-macro2"]
+universal-test-builder = ["rustilities-procedural"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
