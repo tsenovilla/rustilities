@@ -16,16 +16,24 @@ use syn::{
 	punctuated::Punctuated,
 };
 
-#[derive(Debug)]
+#[cfg_attr(test, derive(Debug))]
 pub(crate) struct UniversalTestBuilderDefinition {
-	state_index: u128,
-	build_method: Ident,
-	generates: Type,
-	extra_args: Option<Punctuated<Type, Token![,]>>,
+	pub(crate) state_index: u128,
+	pub(crate) build_method: Ident,
+	pub(crate) generates: Type,
+	pub(crate) extra_args: Option<Punctuated<Type, Token![,]>>,
 }
 
 impl Parse for UniversalTestBuilderDefinition {
 	fn parse(input: ParseStream) -> Result<Self> {
+		let content;
+		syn::braced! {content in input};
+		Self::parse_fields(&content)
+	}
+}
+
+impl UniversalTestBuilderDefinition {
+	fn parse_fields(input: ParseStream) -> Result<Self> {
 		let mut state_index = None;
 		let mut build_method = None;
 		let mut generates = None;
@@ -80,5 +88,17 @@ impl Parse for UniversalTestBuilderDefinition {
 			(_, _, None, _) =>
 				Err(Error::new(initial_span, "Missing generates in universal_test_builder")),
 		}
+	}
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct UniversalTestBuilderInput {
+	pub(crate) blocks: Punctuated<UniversalTestBuilderDefinition, Token![,]>,
+}
+
+impl Parse for UniversalTestBuilderInput {
+	fn parse(input: ParseStream) -> syn::Result<Self> {
+		let blocks = Punctuated::parse_terminated(input)?;
+		Ok(Self { blocks })
 	}
 }

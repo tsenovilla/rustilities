@@ -190,11 +190,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Rename profraw files with partition prefix
+        run: |
+          for f in target/llvm-cov-target/*.profraw; do
+            [ -f "$f" ] && mv "$f" "${f%.profraw}-p${{ matrix.partition }}.profraw"
+          done
+
       - name: Upload coverage data
         uses: actions/upload-artifact@v4
         with:
           name: coverage-data-${{ matrix.partition }}
-          path: target/llvm-cov-target/**/*.profraw
+          path: target/llvm-cov-target/*.profraw
           retention-days: 1
 
   upload-coverage:
@@ -225,13 +231,13 @@ jobs:
 
       - name: Setup llvm-cov environment and extract test binaries
         run: |
-          source <(cargo llvm-cov show-env --export-prefix)
+          source <(cargo llvm-cov show-env --sh)
           mkdir -p target/llvm-cov-target
           tar --zstd -xf nextest-archive.tar.zst --strip-components=1 -C target/llvm-cov-target
 
       - name: Generate merged coverage report
         run: |
-          source <(cargo llvm-cov show-env --export-prefix)
+          source <(cargo llvm-cov show-env --sh)
           cargo llvm-cov report --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
