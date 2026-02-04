@@ -6,73 +6,51 @@ use super::*;
 fn universal_test_builder_definition_parse_works() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128, Path)
+			builder = MyBuilder
 		}
 	"#;
 
 	let parsed: UniversalTestBuilderDefinition = syn::parse_str(input).unwrap();
 
-	let expected_generates: Type = syn::parse_quote!(TempDir);
-	let expected_extra_args: Punctuated<Type, Token![,]> = syn::parse_quote!(u128, Path);
-
-	assert_eq!(parsed.state_index, 2);
-	assert_eq!(parsed.build_method.to_string(), "with_temp_dir");
-	assert_eq!(parsed.generates, expected_generates);
-	assert_eq!(parsed.extra_args, Some(expected_extra_args));
+	assert_eq!(parsed.builder.to_string(), "MyBuilder");
+	assert!(!parsed.async_builder);
 }
 
 #[test]
-fn universal_test_builder_definition_parse_works_with_single_extra_arg() {
+fn universal_test_builder_definition_parse_works_with_async_builder() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128)
+			builder = MyBuilder,
+			async_builder
 		}
 	"#;
 
 	let parsed: UniversalTestBuilderDefinition = syn::parse_str(input).unwrap();
 
-	let expected_generates: Type = syn::parse_quote!(TempDir);
-	let expected_extra_args: Punctuated<Type, Token![,]> = syn::parse_quote!(u128);
-
-	assert_eq!(parsed.state_index, 2);
-	assert_eq!(parsed.build_method.to_string(), "with_temp_dir");
-	assert_eq!(parsed.generates, expected_generates);
-	assert_eq!(parsed.extra_args, Some(expected_extra_args));
+	assert_eq!(parsed.builder.to_string(), "MyBuilder");
+	assert!(parsed.async_builder);
 }
 
 #[test]
-fn universal_test_builder_definition_parse_works_without_extra_args() {
+fn universal_test_builder_definition_parse_works_with_async_builder_first() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir
+			async_builder,
+			builder = MyBuilder
 		}
 	"#;
 
 	let parsed: UniversalTestBuilderDefinition = syn::parse_str(input).unwrap();
 
-	let expected_generates: Type = syn::parse_quote!(TempDir);
-
-	assert_eq!(parsed.state_index, 2);
-	assert_eq!(parsed.build_method.to_string(), "with_temp_dir");
-	assert_eq!(parsed.generates, expected_generates);
-	assert_eq!(parsed.extra_args, None);
+	assert_eq!(parsed.builder.to_string(), "MyBuilder");
+	assert!(parsed.async_builder);
 }
 
 #[test]
-fn universal_test_builder_definition_fails_if_state_index_not_followed_by_eq() {
+fn universal_test_builder_definition_fails_if_builder_not_followed_by_eq() {
 	let input = r#"
 		{
-			state_index : 2,
-			build_method = with_temp_dir,
-			generates = TempDir
+			builder : MyBuilder
 		}
 	"#;
 
@@ -82,57 +60,10 @@ fn universal_test_builder_definition_fails_if_state_index_not_followed_by_eq() {
 }
 
 #[test]
-fn universal_test_builder_definition_fails_if_state_index_not_number() {
+fn universal_test_builder_definition_fails_if_builder_not_ident() {
 	let input = r#"
 		{
-			state_index = A,
-			build_method = with_temp_dir,
-			generates = TempDir
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("expected integer literal", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_state_index_doesnt_fit_into_u128() {
-	let input = r#"
-		{
-			state_index = 340282366920938463463374607431768211456,
-			build_method = with_temp_dir,
-			generates = TempDir
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("number too large to fit in target type", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_build_method_not_followed_by_eq() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method : with_temp_dir,
-			generates = TempDir
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("expected `=`", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_build_method_not_ident() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = 42,
-			generates = TempDir
+			builder = 42
 		}
 	"#;
 
@@ -142,79 +73,11 @@ fn universal_test_builder_definition_fails_if_build_method_not_ident() {
 }
 
 #[test]
-fn universal_test_builder_definition_fails_if_generates_not_followed_by_eq() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates : TempDir
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("expected `=`", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_generates_not_followed_by_type() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = 2
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!(
-		"expected one of: `for`, parentheses, `fn`, `unsafe`, `extern`, identifier, `::`, `<`, `dyn`, square brackets, `*`, `&`, `!`, `impl`, `_`, lifetime",
-		parsed.unwrap_err().to_string()
-	);
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_extra_args_not_followed_by_eq() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args: (u128, Path)
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("expected `=`", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_extra_args_not_well_written() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128; Path)
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("expected `,`", parsed.unwrap_err().to_string());
-}
-
-#[test]
 fn universal_test_builder_definition_fails_if_random_stuff_passed() {
 	let input = r#"
 		{
-			state_index = 2,
-			random_stuff,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128; Path)
+			builder = MyBuilder,
+			random_stuff
 		}
 	"#;
 
@@ -224,108 +87,67 @@ fn universal_test_builder_definition_fails_if_random_stuff_passed() {
 }
 
 #[test]
-fn universal_test_builder_definition_fails_if_missing_state_index() {
+fn universal_test_builder_definition_fails_if_missing_builder() {
 	let input = r#"
 		{
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128, Path)
+			async_builder
 		}
 	"#;
 
 	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
 
-	assert_eq!("Missing state_index in universal_test_builder", parsed.unwrap_err().to_string());
+	assert_eq!("Missing builder in universal_test_builder", parsed.unwrap_err().to_string());
 }
 
 #[test]
-fn universal_test_builder_definition_fails_if_missing_build_method() {
+fn universal_test_builder_definition_fails_if_empty() {
 	let input = r#"
 		{
-			state_index = 2,
-			generates = TempDir,
-			extra_args = (u128, Path)
 		}
 	"#;
 
 	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
 
-	assert_eq!("Missing build_method in universal_test_builder", parsed.unwrap_err().to_string());
-}
-
-#[test]
-fn universal_test_builder_definition_fails_if_missing_generates() {
-	let input = r#"
-		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			extra_args = (u128, Path)
-		}
-	"#;
-
-	let parsed: Result<UniversalTestBuilderDefinition> = syn::parse_str(input);
-
-	assert_eq!("Missing generates in universal_test_builder", parsed.unwrap_err().to_string());
+	assert_eq!("Missing builder in universal_test_builder", parsed.unwrap_err().to_string());
 }
 
 #[test]
 fn universal_test_builder_input_parse_works_with_one_input() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128, Path)
+			builder = MyBuilder
 		}
 	"#;
 
 	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
 	let parsed = parsed.blocks;
 
-	let expected_generates: Type = syn::parse_quote!(TempDir);
-	let expected_extra_args: Punctuated<Type, Token![,]> = syn::parse_quote!(u128, Path);
-
 	assert_eq!(parsed.len(), 1);
-	assert_eq!(parsed[0].state_index, 2);
-	assert_eq!(parsed[0].build_method.to_string(), "with_temp_dir");
-	assert_eq!(parsed[0].generates, expected_generates);
-	assert_eq!(parsed[0].extra_args, Some(expected_extra_args));
+	assert_eq!(parsed[0].builder.to_string(), "MyBuilder");
+	assert!(!parsed[0].async_builder);
 }
 
 #[test]
 fn universal_test_builder_input_parse_works_with_several_inputs() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128, Path)
+			builder = FirstBuilder
 		},
 		{
-			state_index = 3,
-			build_method = another_method,
-			generates = TempDir,
-			extra_args = (u128)
+			builder = SecondBuilder,
+			async_builder
 		}
 	"#;
 
 	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
 	let parsed = parsed.blocks;
 
-	let expected_generates: Type = syn::parse_quote!(TempDir);
-	let expected_extra_args1: Punctuated<Type, Token![,]> = syn::parse_quote!(u128, Path);
-	let expected_extra_args2: Punctuated<Type, Token![,]> = syn::parse_quote!(u128);
-
 	assert_eq!(parsed.len(), 2);
-	assert_eq!(parsed[0].state_index, 2);
-	assert_eq!(parsed[0].build_method.to_string(), "with_temp_dir");
-	assert_eq!(parsed[0].generates, expected_generates);
-	assert_eq!(parsed[0].extra_args, Some(expected_extra_args1));
+	assert_eq!(parsed[0].builder.to_string(), "FirstBuilder");
+	assert!(!parsed[0].async_builder);
 
-	assert_eq!(parsed[1].state_index, 3);
-	assert_eq!(parsed[1].build_method.to_string(), "another_method");
-	assert_eq!(parsed[1].generates, expected_generates);
-	assert_eq!(parsed[1].extra_args, Some(expected_extra_args2));
+	assert_eq!(parsed[1].builder.to_string(), "SecondBuilder");
+	assert!(parsed[1].async_builder);
 }
 
 #[test]
@@ -342,14 +164,114 @@ fn universal_test_builder_input_parse_works_with_non_inputs() {
 fn universal_test_builder_input_parse_fails_if_not_universal_test_builder_definition_passed() {
 	let input = r#"
 		{
-			state_index = 2,
-			build_method = with_temp_dir,
-			generates = TempDir,
-			extra_args = (u128, Path)
+			builder = MyBuilder
 		},
 		{ Something else }
 	"#;
 
 	let parsed: Result<UniversalTestBuilderInput> = syn::parse_str(input);
 	assert_eq!("unexpected token in universal_test_builder", parsed.unwrap_err().to_string());
+}
+
+#[test]
+fn derived_vecs_works() {
+	let input = r#"
+		{
+			builder = FirstBuilder
+		},
+		{
+			builder = SecondBuilder,
+			async_builder
+		}
+	"#;
+
+	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
+	let (indices, builders, builders_snake_case, is_async, building_args, builder_outputs) =
+		parsed.derived_vecs();
+
+	// Check indices
+	assert_eq!(indices.len(), 2);
+	assert_eq!(indices[0].index, 1);
+	assert_eq!(indices[1].index, 2);
+
+	// Check builders
+	assert_eq!(builders.len(), 2);
+	assert_eq!(builders[0].to_string(), "FirstBuilder");
+	assert_eq!(builders[1].to_string(), "SecondBuilder");
+
+	// Check builders_snake_case
+	assert_eq!(builders_snake_case.len(), 2);
+	assert_eq!(builders_snake_case[0].to_string(), "first_builder");
+	assert_eq!(builders_snake_case[1].to_string(), "second_builder");
+
+	// Check is_async
+	assert_eq!(is_async.len(), 2);
+	assert!(!is_async[0]);
+	assert!(is_async[1]);
+
+	// Check building_args
+	assert_eq!(building_args.len(), 2);
+	let expected_args_first: TokenStream =
+		quote::quote! { <FirstBuilder as rustilities::universal_test_builder::Builder>::Args };
+	let expected_args_second: TokenStream =
+		quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Args };
+	assert_eq!(building_args[0].to_string(), expected_args_first.to_string());
+	assert_eq!(building_args[1].to_string(), expected_args_second.to_string());
+
+	// Check builder_outputs
+	assert_eq!(builder_outputs.len(), 2);
+	let expected_output_first: TokenStream =
+		quote::quote! { <FirstBuilder as rustilities::universal_test_builder::Builder>::Output };
+	let expected_output_second: TokenStream =
+		quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output };
+	assert_eq!(builder_outputs[0].to_string(), expected_output_first.to_string());
+	assert_eq!(builder_outputs[1].to_string(), expected_output_second.to_string());
+}
+
+#[test]
+fn derived_vecs_works_with_empty_input() {
+	let input = r#""#;
+
+	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
+	let (indices, builders, builders_snake_case, is_async, building_args, builder_outputs) =
+		parsed.derived_vecs();
+
+	assert!(indices.is_empty());
+	assert!(builders.is_empty());
+	assert!(builders_snake_case.is_empty());
+	assert!(is_async.is_empty());
+	assert!(building_args.is_empty());
+	assert!(builder_outputs.is_empty());
+}
+
+#[test]
+fn universal_test_builder_input_fails_if_duplicate_builders() {
+	let input = r#"
+		{
+			builder = MyBuilder
+		},
+		{
+			builder = MyBuilder
+		}
+	"#;
+
+	let parsed: Result<UniversalTestBuilderInput> = syn::parse_str(input);
+	assert_eq!(
+		"duplicate builder 'MyBuilder' in universal_test_builder",
+		parsed.unwrap_err().to_string()
+	);
+}
+
+#[test]
+fn universal_test_builder_input_fails_if_more_than_128_builders() {
+	let blocks: Vec<String> = (0..129)
+		.map(|i| format!("{{ builder = Builder{} }}", i))
+		.collect();
+	let input = blocks.join(",");
+
+	let parsed: Result<UniversalTestBuilderInput> = syn::parse_str(&input);
+	assert_eq!(
+		"universal_test_builder supports at most 128 builders",
+		parsed.unwrap_err().to_string()
+	);
 }
