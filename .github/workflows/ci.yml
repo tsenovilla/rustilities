@@ -181,8 +181,6 @@ jobs:
       - name: Run tests with coverage
         run: |
           cargo llvm-cov nextest \
-          --workspace \
-          --lib \
           --archive-file nextest-archive.tar.zst \
           --partition count:${{ matrix.partition }}/4 \
           --ignore-filename-regex "/tests\.rs$|rustilities-procedural/src/(lib|universal_test_builder)\.rs" \
