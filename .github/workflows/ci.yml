@@ -186,9 +186,7 @@ jobs:
           --no-doctests \
           --archive-file nextest-archive.tar.zst \
           --partition count:${{ matrix.partition }}/4 \
-          --ignore-filename-regex "/tests\.rs$" \
-          --ignore-filename-regex "rustilities-procedural/src/lib.rs" \
-          --ignore-filename-regex "rustilities-procedural/src/universal_test_builder.rs" \
+          --ignore-filename-regex "/tests\.rs$|rustilities-procedural/src/(lib|universal_test_builder)\.rs" \
           --no-report \
           --no-fail-fast \
           --status-level all
