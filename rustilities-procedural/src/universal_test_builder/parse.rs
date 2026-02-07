@@ -12,7 +12,7 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream;
 use syn::{
-	Error, Ident, Index, Result, Token,
+	Error, Fields, Ident, ItemStruct, Result, Token,
 	parse::{Parse, ParseStream},
 	punctuated::Punctuated,
 };
@@ -76,13 +76,6 @@ impl Parse for UniversalTestBuilderInput {
 		let blocks: Punctuated<UniversalTestBuilderDefinition, Token![,]> =
 			Punctuated::parse_terminated(input)?;
 
-		if blocks.len() > 128 {
-			return Err(Error::new(
-				input.span(),
-				"universal_test_builder supports at most 128 builders",
-			));
-		}
-
 		// Validate: all builders must be unique
 		let mut seen = HashSet::new();
 		for block in &blocks {
@@ -116,51 +109,67 @@ fn to_snake_case(s: &str) -> String {
 	result
 }
 
-impl UniversalTestBuilderInput {
-	/// Returns 6 vectors derived from the builders:
-	/// 1. `indices`: Position indices as `syn::Index`
-	/// 2. `builders`: The original builder Idents
-	/// 3. `builders_snake_case`: Builder names in snake_case as Idents (e.g., `MyBuilder` -> `my_builder`)
-	/// 4. `is_async`: Whether each builder is async
-	/// 5. `building_args`: TokenStreams like `<Builder as Builder>::Args` or
-	///    `<Builder as AsyncBuilder>::Args`
-	/// 6. `builder_outputs`: TokenStreams like `<Builder as Builder>::Output` or
-	///    `<Builder as AsyncBuilder>::Output`
-	pub(crate) fn derived_vecs(
-		self,
-	) -> (Vec<Index>, Vec<Ident>, Vec<Ident>, Vec<bool>, Vec<TokenStream>, Vec<TokenStream>) {
-		let mut indices = Vec::new();
-		let mut builders = Vec::new();
-		let mut builders_snake_case = Vec::new();
-		let mut is_async = Vec::new();
-		let mut building_args = Vec::new();
-		let mut builder_outputs = Vec::new();
+pub(crate) struct DerivedStreams {
+	// The builder struct name.
+	pub(crate) builders: Vec<Ident>,
+	// The transition function to include a builder
+	pub(crate) builders_transition_functions: Vec<Ident>,
+	// The builder name in snake_case
+	pub(crate) builders_snake_case: Vec<Ident>,
+	// Whether this builder is async.
+	pub(crate) is_async: Vec<bool>,
+	// The args this builder needs.
+	pub(crate) builder_args: Vec<TokenStream>,
+	// The output produced by this builder.
+	pub(crate) builder_outputs: Vec<TokenStream>,
+}
 
-		for (index, block) in self.blocks.iter().enumerate() {
-			indices.push(Index::from(index + 1));
-			builders.push(block.builder.clone());
-			builders_snake_case
-				.push(quote::format_ident!("{}", to_snake_case(&block.builder.to_string())));
-			is_async.push(block.async_builder);
+impl UniversalTestBuilderInput {
+	pub(crate) fn derive_streams(self) -> DerivedStreams {
+		let mut derived = DerivedStreams {
+			builders: Vec::new(),
+			builders_transition_functions: Vec::new(),
+			builders_snake_case: Vec::new(),
+			is_async: Vec::new(),
+			builder_args: Vec::new(),
+			builder_outputs: Vec::new(),
+		};
+
+		for block in self.blocks.iter() {
+			let snake = to_snake_case(&block.builder.to_string());
+			derived.builders.push(block.builder.clone());
+			derived
+				.builders_transition_functions
+				.push(quote::format_ident!("with_{}", snake));
+			derived.builders_snake_case.push(quote::format_ident!("{}", snake));
+			derived.is_async.push(block.async_builder);
 
 			let builder = &block.builder;
 			if block.async_builder {
-				building_args.push(
+				derived.builder_args.push(
 					quote::quote! { <#builder as rustilities::universal_test_builder::AsyncBuilder>::Args },
 				);
-				builder_outputs.push(
+				derived.builder_outputs.push(
 					quote::quote! { <#builder as rustilities::universal_test_builder::AsyncBuilder>::Output },
 				);
 			} else {
-				building_args.push(
+				derived.builder_args.push(
 					quote::quote! { <#builder as rustilities::universal_test_builder::Builder>::Args },
 				);
-				builder_outputs.push(
+				derived.builder_outputs.push(
 					quote::quote! { <#builder as rustilities::universal_test_builder::Builder>::Output },
 				);
 			};
 		}
 
-		(indices, builders, builders_snake_case, is_async, building_args, builder_outputs)
+		derived
+	}
+}
+
+pub(crate) fn parse_unit_struct_ident(item: ItemStruct) -> Result<Ident> {
+	if matches!(item.fields, Fields::Unit) {
+		Ok(item.ident)
+	} else {
+		Err(Error::new_spanned(&item, "expected a unit struct"))
 	}
 }

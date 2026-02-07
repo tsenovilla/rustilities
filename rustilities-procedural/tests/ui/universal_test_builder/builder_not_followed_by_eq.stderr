@@ -1,0 +1,5 @@
+error: expected `=`
+  --> tests/ui/universal_test_builder/builder_not_followed_by_eq.rs:31:35
+   |
+31 | #[universal_test_builder({builder : Builder1}, {builder = Builder2, async_builder})]
+   |                                   ^

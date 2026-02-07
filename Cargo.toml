@@ -12,13 +12,17 @@ description = "This crate offers a few utils for Rust development"
 documentation = "https://docs.rs/rustilities"
 
 [workspace.dependencies]
+async-trait = "0.1.89"
 cargo_toml = "0.22.3"
 proc-macro2 = "1.0.93"
 quote = "1.0.44"
 syn = "2.0.98"
 tempfile = "3.16.0"
 thiserror = "2.0.11"
+tokio = "1.49.0"
 toml_edit = "0.24.0"
+trybuild = "1.0.115"
 
-[patch.crates-io]
-rustilities-procedural = { path = "./rustilities-procedural" }
+# local crates
+rustilities = { path = "rustilities" }
+rustilities-procedural = { path = "rustilities-procedural" }

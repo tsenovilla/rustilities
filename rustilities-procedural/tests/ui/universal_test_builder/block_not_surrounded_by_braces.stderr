@@ -1,0 +1,5 @@
+error: expected curly braces
+  --> tests/ui/universal_test_builder/block_not_surrounded_by_braces.rs:31:48
+   |
+31 | #[universal_test_builder({builder = Builder1}, [builder = Builder2, async_builder])]
+   |                                                ^

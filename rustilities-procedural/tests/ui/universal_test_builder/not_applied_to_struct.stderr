@@ -1,0 +1,5 @@
+error: expected `struct`
+  --> tests/ui/universal_test_builder/not_applied_to_struct.rs:32:1
+   |
+32 | enum UniversalBuilder{
+   | ^^^^

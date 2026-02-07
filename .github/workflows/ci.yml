@@ -181,9 +181,14 @@ jobs:
       - name: Run tests with coverage
         run: |
           cargo llvm-cov nextest \
+          --workspace \
+          --lib \
+          --no-doctests \
           --archive-file nextest-archive.tar.zst \
           --partition count:${{ matrix.partition }}/4 \
           --ignore-filename-regex "/tests\.rs$" \
+          --ignore-filename-regex "rustilities-procedural/src/lib.rs" \
+          --ignore-filename-regex "rustilities-procedural/src/universal_test_builder.rs" \
           --no-report \
           --no-fail-fast \
           --status-level all
@@ -246,3 +251,32 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: codecov.json
           fail_ci_if_error: true
+
+  run-integration-tests:
+    needs: [check, fmt]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-integration-tests-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+    
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Run tests
+        run: |
+          cargo nextest run \
+          --all-features \
+          --workspace \
+          --test universal_test_builder \
+          --test universal_test_builder_async \
+          --test ui

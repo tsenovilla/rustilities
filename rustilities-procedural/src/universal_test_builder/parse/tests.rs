@@ -174,7 +174,7 @@ fn universal_test_builder_input_parse_fails_if_not_universal_test_builder_defini
 }
 
 #[test]
-fn derived_vecs_works() {
+fn derive_streams_works() {
 	let input = r#"
 		{
 			builder = FirstBuilder
@@ -186,18 +186,24 @@ fn derived_vecs_works() {
 	"#;
 
 	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
-	let (indices, builders, builders_snake_case, is_async, building_args, builder_outputs) =
-		parsed.derived_vecs();
-
-	// Check indices
-	assert_eq!(indices.len(), 2);
-	assert_eq!(indices[0].index, 1);
-	assert_eq!(indices[1].index, 2);
+	let DerivedStreams {
+		builders,
+		builders_transition_functions,
+		builders_snake_case,
+		is_async,
+		builder_args,
+		builder_outputs,
+	} = parsed.derive_streams();
 
 	// Check builders
 	assert_eq!(builders.len(), 2);
 	assert_eq!(builders[0].to_string(), "FirstBuilder");
 	assert_eq!(builders[1].to_string(), "SecondBuilder");
+
+	// Check builders_transition_functions
+	assert_eq!(builders_transition_functions.len(), 2);
+	assert_eq!(builders_transition_functions[0].to_string(), "with_first_builder");
+	assert_eq!(builders_transition_functions[1].to_string(), "with_second_builder");
 
 	// Check builders_snake_case
 	assert_eq!(builders_snake_case.len(), 2);
@@ -209,38 +215,42 @@ fn derived_vecs_works() {
 	assert!(!is_async[0]);
 	assert!(is_async[1]);
 
-	// Check building_args
-	assert_eq!(building_args.len(), 2);
+	// Check builder_args
+	assert_eq!(builder_args.len(), 2);
 	let expected_args_first: TokenStream =
 		quote::quote! { <FirstBuilder as rustilities::universal_test_builder::Builder>::Args };
-	let expected_args_second: TokenStream =
-		quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Args };
-	assert_eq!(building_args[0].to_string(), expected_args_first.to_string());
-	assert_eq!(building_args[1].to_string(), expected_args_second.to_string());
+	let expected_args_second: TokenStream = quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Args };
+	assert_eq!(builder_args[0].to_string(), expected_args_first.to_string());
+	assert_eq!(builder_args[1].to_string(), expected_args_second.to_string());
 
 	// Check builder_outputs
 	assert_eq!(builder_outputs.len(), 2);
 	let expected_output_first: TokenStream =
 		quote::quote! { <FirstBuilder as rustilities::universal_test_builder::Builder>::Output };
-	let expected_output_second: TokenStream =
-		quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output };
+	let expected_output_second: TokenStream = quote::quote! { <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output };
 	assert_eq!(builder_outputs[0].to_string(), expected_output_first.to_string());
 	assert_eq!(builder_outputs[1].to_string(), expected_output_second.to_string());
 }
 
 #[test]
-fn derived_vecs_works_with_empty_input() {
+fn derive_streams_works_with_empty_input() {
 	let input = r#""#;
 
 	let parsed: UniversalTestBuilderInput = syn::parse_str(input).unwrap();
-	let (indices, builders, builders_snake_case, is_async, building_args, builder_outputs) =
-		parsed.derived_vecs();
+	let DerivedStreams {
+		builders,
+		builders_transition_functions,
+		builders_snake_case,
+		is_async,
+		builder_args,
+		builder_outputs,
+	} = parsed.derive_streams();
 
-	assert!(indices.is_empty());
 	assert!(builders.is_empty());
+	assert!(builders_transition_functions.is_empty());
 	assert!(builders_snake_case.is_empty());
 	assert!(is_async.is_empty());
-	assert!(building_args.is_empty());
+	assert!(builder_args.is_empty());
 	assert!(builder_outputs.is_empty());
 }
 
@@ -263,15 +273,25 @@ fn universal_test_builder_input_fails_if_duplicate_builders() {
 }
 
 #[test]
-fn universal_test_builder_input_fails_if_more_than_128_builders() {
-	let blocks: Vec<String> = (0..129)
-		.map(|i| format!("{{ builder = Builder{} }}", i))
-		.collect();
-	let input = blocks.join(",");
+fn parse_unit_struct_ident_works() {
+	let item: ItemStruct = syn::parse_str("struct Foo;").unwrap();
+	assert_eq!(parse_unit_struct_ident(item).unwrap().to_string(), "Foo");
+}
 
-	let parsed: Result<UniversalTestBuilderInput> = syn::parse_str(&input);
-	assert_eq!(
-		"universal_test_builder supports at most 128 builders",
-		parsed.unwrap_err().to_string()
-	);
+#[test]
+fn parse_unit_struct_ident_fails_for_named_fields() {
+	let item: ItemStruct = syn::parse_str("struct Foo { x: u32 }").unwrap();
+	assert_eq!(parse_unit_struct_ident(item).unwrap_err().to_string(), "expected a unit struct");
+}
+
+#[test]
+fn parse_unit_struct_ident_fails_for_tuple_struct() {
+	let item: ItemStruct = syn::parse_str("struct Foo(u32);").unwrap();
+	assert_eq!(parse_unit_struct_ident(item).unwrap_err().to_string(), "expected a unit struct");
+}
+
+#[test]
+fn parse_unit_struct_ident_fails_for_empty_named_fields() {
+	let item: ItemStruct = syn::parse_str("struct Foo {}").unwrap();
+	assert_eq!(parse_unit_struct_ident(item).unwrap_err().to_string(), "expected a unit struct");
 }

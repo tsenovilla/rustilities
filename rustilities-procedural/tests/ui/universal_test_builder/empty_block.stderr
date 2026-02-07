@@ -1,0 +1,5 @@
+error: Missing builder in universal_test_builder
+  --> tests/ui/universal_test_builder/empty_block.rs:31:49
+   |
+31 | #[universal_test_builder({builder = Builder1}, {}, {builder = Builder2, async_builder})]
+   |                                                 ^

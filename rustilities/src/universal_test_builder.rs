@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0
 
-#[cfg(test)]
-mod tests;
+/// Re-export of async_trait to be used with [`AsyncBuilder`]
+pub use async_trait::async_trait;
 
-use core::marker::PhantomData;
+pub trait Builder {
+	type Output;
+	type Args;
 
-pub struct UniversalTestBuilder<State> {
-	_state_mask: u128,
-	_marker: PhantomData<State>,
+	fn build(args: Self::Args) -> Self::Output;
 }
 
-pub struct UniversalTestBuilderInit;
-impl Default for UniversalTestBuilder<UniversalTestBuilderInit> {
-	fn default() -> Self {
-		Self { _state_mask: 0, _marker: PhantomData }
-	}
+#[async_trait]
+pub trait AsyncBuilder {
+	type Output;
+	type Args;
+
+	async fn async_build(args: Self::Args) -> Self::Output;
 }

@@ -1,0 +1,5 @@
+error: expected a unit struct
+  --> tests/ui/universal_test_builder/not_applied_to_unit_struct.rs:32:1
+   |
+32 | struct UniversalBuilder(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

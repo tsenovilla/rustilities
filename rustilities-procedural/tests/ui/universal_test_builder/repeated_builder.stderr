@@ -1,0 +1,5 @@
+error: duplicate builder 'Builder1' in universal_test_builder
+  --> tests/ui/universal_test_builder/repeated_builder.rs:31:96
+   |
+31 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder}, {builder = Builder1})]
+   |                                                                                                ^^^^^^^^
