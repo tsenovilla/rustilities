@@ -23,7 +23,7 @@ error[E0599]: no function or associated item named `async_build` found for struc
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `async_build`, perhaps you need to implement it:
            candidate #1: `AsyncBuilder`
-   = note: this error originates in the macro `expand_valid_call` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the attribute macro `universal_test_builder` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `Builder2: AsyncBuilder` is not satisfied
   --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:20:1

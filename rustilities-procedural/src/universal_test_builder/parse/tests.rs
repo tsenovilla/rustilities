@@ -295,3 +295,13 @@ fn parse_unit_struct_ident_fails_for_empty_named_fields() {
 	let item: ItemStruct = syn::parse_str("struct Foo {}").unwrap();
 	assert_eq!(parse_unit_struct_ident(item).unwrap_err().to_string(), "expected a unit struct");
 }
+
+#[test]
+fn to_snake_case_handles_consecutive_uppercase() {
+	assert_eq!(to_snake_case("HTTPBuilder"), "http_builder");
+	assert_eq!(to_snake_case("MyURLParser"), "my_url_parser");
+	assert_eq!(to_snake_case("ABCDef"), "abc_def");
+	assert_eq!(to_snake_case("MyBuilder"), "my_builder");
+	assert_eq!(to_snake_case("A"), "a");
+	assert_eq!(to_snake_case("AB"), "ab");
+}

@@ -17,3 +17,6 @@ pub trait AsyncBuilder {
 
 	async fn async_build(args: Self::Args) -> Self::Output;
 }
+
+
+pub use rustilities_procedural::universal_test_builder;

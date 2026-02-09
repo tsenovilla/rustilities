@@ -80,10 +80,13 @@ impl Parse for UniversalTestBuilderInput {
 		let mut seen = HashSet::new();
 		for block in &blocks {
 			let name = block.builder.to_string();
-			if !seen.insert(name.clone()) {
+			if !seen.insert(name) {
 				return Err(Error::new(
 					block.builder.span(),
-					format!("duplicate builder '{}' in universal_test_builder", name),
+					format!(
+						"duplicate builder '{}' in universal_test_builder",
+						block.builder
+					),
 				));
 			}
 		}
@@ -92,14 +95,21 @@ impl Parse for UniversalTestBuilderInput {
 	}
 }
 
-/// Converts PascalCase to snake_case.
-/// E.g., `MyBuilder` -> `my_builder`
+/// Converts PascalCase to snake_case, handling consecutive uppercase (acronyms).
+/// E.g., `MyBuilder` -> `my_builder`, `HTTPBuilder` -> `http_builder`
 fn to_snake_case(s: &str) -> String {
 	let mut result = String::new();
-	for (i, c) in s.chars().enumerate() {
+	let chars: Vec<char> = s.chars().collect();
+	for (i, &c) in chars.iter().enumerate() {
 		if c.is_uppercase() {
 			if i > 0 {
-				result.push('_');
+				let prev = chars[i - 1];
+				let next = chars.get(i + 1);
+				if prev.is_lowercase()
+					|| (prev.is_uppercase() && next.is_some_and(|n| n.is_lowercase()))
+				{
+					result.push('_');
+				}
 			}
 			result.push(c.to_ascii_lowercase());
 		} else {

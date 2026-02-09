@@ -19,9 +19,12 @@ pub(crate) fn expand_universal_test_builder(
 
 	let async_methods_needed = is_async.iter().any(|&x| x);
 
+	let args_name = quote::format_ident!("{}Args", universal_test_builder_name);
+	let context_name = quote::format_ident!("{}Context", universal_test_builder_name);
+
 	let universal_test_builder_args = quote::quote! {
 		#[derive(Default)]
-		struct UniversalTestBuilderArgs {
+		struct #args_name {
 			#(
 				#builders_snake_case: Option<#builder_args>,
 			)*
@@ -29,22 +32,22 @@ pub(crate) fn expand_universal_test_builder(
 	};
 
 	let universal_test_builder_output = quote::quote! {
-		struct UniversalTestBuilderContext {
+		pub struct #context_name {
 			#(
-				#builders_snake_case: Option<#builder_outputs>,
+				pub #builders_snake_case: Option<#builder_outputs>,
 			)*
 		}
 	};
 
 	let universal_test_builder = quote::quote! {
 		pub struct #universal_test_builder_name {
-			_args: UniversalTestBuilderArgs,
+			args: #args_name,
 		}
 
 		impl Default for #universal_test_builder_name {
 			fn default() -> Self {
 				Self {
-					_args: UniversalTestBuilderArgs::default(),
+					args: #args_name::default(),
 				}
 			}
 		}
@@ -54,59 +57,66 @@ pub(crate) fn expand_universal_test_builder(
 		impl #universal_test_builder_name {
 			#(
 				pub fn #builders_transition_functions(self, args: #builder_args) -> Self {
-					let mut updated_args = self._args;
+					let mut updated_args = self.args;
 					updated_args.#builders_snake_case = Some(args);
 					Self {
-						_args: updated_args,
+						args: updated_args,
 					}
 				}
 			)*
 		}
 	};
 
-	let build_methods = if async_methods_needed {
-		quote::quote! {
-			// As each builder implements either `Builder` or `AsyncBuilder`,
-			// this inner macro ensures only the valid calls are expanded.
-			macro_rules! expand_valid_call {
-				(build, $context_ident:ident, $builder:ident, true) => {
-					None
-				};
-				(build, $context_ident:ident, $builder:ident, false) => {
-					$context_ident.map(|args| $builder::build(args))
-				};
-				(async_build, $context_ident:ident, $builder:ident, true) => {
-					match $context_ident {
-						Some(args) => Some($builder::async_build(args).await),
-						None => None,
-					}
-				};
-				(async_build, $context_ident:ident, $builder:ident, false) => {
-					$context_ident.map(|args| $builder::build(args))
-				};
+	let build_calls: Vec<TokenStream> = builders
+		.iter()
+		.zip(builders_snake_case.iter())
+		.zip(is_async.iter())
+		.map(|((builder, snake), &is_async)| {
+			if is_async {
+				quote::quote! { let #snake = None; }
+			} else {
+				quote::quote! { let #snake = #snake.map(|args| #builder::build(args)); }
 			}
+		})
+		.collect();
 
+	let build_methods = if async_methods_needed {
+		let async_build_calls: Vec<TokenStream> = builders
+			.iter()
+			.zip(builders_snake_case.iter())
+			.zip(is_async.iter())
+			.map(|((builder, snake), &is_async)| {
+				if is_async {
+					quote::quote! {
+						let #snake = match #snake {
+							Some(args) => Some(#builder::async_build(args).await),
+							None => None,
+						};
+					}
+				} else {
+					quote::quote! { let #snake = #snake.map(|args| #builder::build(args)); }
+				}
+			})
+			.collect();
+
+		quote::quote! {
 			impl #universal_test_builder_name {
-				pub fn build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub fn build(self) -> #context_name {
+					let #args_name {
 						#(#builders_snake_case,)*
-					} = self._args;
-					#(
-						let #builders_snake_case = expand_valid_call!(build, #builders_snake_case, #builders, #is_async);
-					)*
-					UniversalTestBuilderContext {
+					} = self.args;
+					#(#build_calls)*
+					#context_name {
 						#(#builders_snake_case,)*
 					}
 				}
 
-				pub async fn async_build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub async fn async_build(self) -> #context_name {
+					let #args_name {
 						#(#builders_snake_case,)*
-					} = self._args;
-					#(
-						let #builders_snake_case = expand_valid_call!(async_build, #builders_snake_case, #builders, #is_async);
-					)*
-					UniversalTestBuilderContext {
+					} = self.args;
+					#(#async_build_calls)*
+					#context_name {
 						#(#builders_snake_case,)*
 					}
 				}
@@ -115,14 +125,12 @@ pub(crate) fn expand_universal_test_builder(
 	} else {
 		quote::quote! {
 			impl #universal_test_builder_name {
-				pub fn build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub fn build(self) -> #context_name {
+					let #args_name {
 						#(#builders_snake_case,)*
-					} = self._args;
-					#(
-						let #builders_snake_case = #builders_snake_case.map(|args| #builders::build(args));
-					)*
-					UniversalTestBuilderContext {
+					} = self.args;
+					#(#build_calls)*
+					#context_name {
 						#(#builders_snake_case,)*
 					}
 				}
@@ -131,17 +139,17 @@ pub(crate) fn expand_universal_test_builder(
 	};
 
 	let execute_methods = quote::quote! {
-		impl UniversalTestBuilderContext {
+		impl #context_name {
 			pub fn execute<F>(self, test: F)
 			where
-				F: Fn(Self) -> (),
+				F: FnOnce(Self),
 			{
 				test(self);
 			}
 
 			pub async fn async_execute<F, Fut>(self, test: F)
 			where
-				F: Fn(Self) -> Fut,
+				F: FnOnce(Self) -> Fut,
 				Fut: core::future::Future<Output = ()>,
 			{
 				test(self).await;
@@ -181,103 +189,88 @@ mod tests {
 		let actual = expand_universal_test_builder(builder_name, builders);
 		let expected = quote::quote! {
 			#[derive(Default)]
-			struct UniversalTestBuilderArgs {
+			struct UniversalBuilderArgs {
 				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Args>,
 				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Args>,
 			}
 
-			struct UniversalTestBuilderContext {
-				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
-				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output>,
+			pub struct UniversalBuilderContext {
+				pub first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
+				pub second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output>,
 			}
 
 			pub struct UniversalBuilder {
-				_args: UniversalTestBuilderArgs,
+				args: UniversalBuilderArgs,
 			}
 
 			impl Default for UniversalBuilder {
 				fn default() -> Self {
 					Self {
-						_args: UniversalTestBuilderArgs::default(),
+						args: UniversalBuilderArgs::default(),
 					}
 				}
 			}
 
 			impl UniversalBuilder {
 				pub fn with_first_builder(self, args: <FirstBuilder as rustilities::universal_test_builder::Builder>::Args) -> Self {
-					let mut updated_args = self._args;
+					let mut updated_args = self.args;
 					updated_args.first_builder = Some(args);
 					Self {
-						_args: updated_args,
+						args: updated_args,
 					}
 				}
 
 				pub fn with_second_builder(self, args: <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Args) -> Self {
-					let mut updated_args = self._args;
+					let mut updated_args = self.args;
 					updated_args.second_builder = Some(args);
 					Self {
-						_args: updated_args,
+						args: updated_args,
 					}
 				}
-			}
-
-			macro_rules! expand_valid_call {
-				(build, $context_ident:ident, $builder:ident, true) => {
-					None
-				};
-				(build, $context_ident:ident, $builder:ident, false) => {
-					$context_ident.map(|args| $builder::build(args))
-				};
-				(async_build, $context_ident:ident, $builder:ident, true) => {
-					match $context_ident {
-						Some(args) => Some($builder::async_build(args).await),
-						None => None,
-					}
-				};
-				(async_build, $context_ident:ident, $builder:ident, false) => {
-					$context_ident.map(|args| $builder::build(args))
-				};
 			}
 
 			impl UniversalBuilder {
-				pub fn build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub fn build(self) -> UniversalBuilderContext {
+					let UniversalBuilderArgs {
 						first_builder,
 						second_builder,
-					} = self._args;
-					let first_builder = expand_valid_call!(build, first_builder, FirstBuilder, false);
-					let second_builder = expand_valid_call!(build, second_builder, SecondBuilder, true);
-					UniversalTestBuilderContext {
+					} = self.args;
+					let first_builder = first_builder.map(|args| FirstBuilder::build(args));
+					let second_builder = None;
+					UniversalBuilderContext {
 						first_builder,
 						second_builder,
 					}
 				}
 
-				pub async fn async_build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub async fn async_build(self) -> UniversalBuilderContext {
+					let UniversalBuilderArgs {
 						first_builder,
 						second_builder,
-					} = self._args;
-					let first_builder = expand_valid_call!(async_build, first_builder, FirstBuilder, false);
-					let second_builder = expand_valid_call!(async_build, second_builder, SecondBuilder, true);
-					UniversalTestBuilderContext {
+					} = self.args;
+					let first_builder = first_builder.map(|args| FirstBuilder::build(args));
+					let second_builder = match second_builder {
+						Some(args) => Some(SecondBuilder::async_build(args).await),
+						None => None,
+					};
+					UniversalBuilderContext {
 						first_builder,
 						second_builder,
 					}
 				}
 			}
 
-			impl UniversalTestBuilderContext {
+			impl UniversalBuilderContext {
 				pub fn execute<F>(self, test: F)
 				where
-					F: Fn(Self) -> (),
+					F: FnOnce(Self),
 				{
 					test(self);
 				}
 
 				pub async fn async_execute<F, Fut>(self, test: F)
 				where
-					F: Fn(Self) -> Fut,
+					F: FnOnce(Self) -> Fut,
 					Fut: core::future::Future<Output = ()>,
 				{
 					test(self).await;
@@ -305,72 +298,72 @@ mod tests {
 		let actual = expand_universal_test_builder(builder_name, builders);
 		let expected = quote::quote! {
 			#[derive(Default)]
-			struct UniversalTestBuilderArgs {
+			struct UniversalBuilderArgs {
 				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Args>,
 				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::Builder>::Args>,
 			}
 
-			struct UniversalTestBuilderContext {
-				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
-				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::Builder>::Output>,
+			pub struct UniversalBuilderContext {
+				pub first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
+				pub second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::Builder>::Output>,
 			}
 
 			pub struct UniversalBuilder {
-				_args: UniversalTestBuilderArgs,
+				args: UniversalBuilderArgs,
 			}
 
 			impl Default for UniversalBuilder {
 				fn default() -> Self {
 					Self {
-						_args: UniversalTestBuilderArgs::default(),
+						args: UniversalBuilderArgs::default(),
 					}
 				}
 			}
 
 			impl UniversalBuilder {
 				pub fn with_first_builder(self, args: <FirstBuilder as rustilities::universal_test_builder::Builder>::Args) -> Self {
-					let mut updated_args = self._args;
+					let mut updated_args = self.args;
 					updated_args.first_builder = Some(args);
 					Self {
-						_args: updated_args,
+						args: updated_args,
 					}
 				}
 
 				pub fn with_second_builder(self, args: <SecondBuilder as rustilities::universal_test_builder::Builder>::Args) -> Self {
-					let mut updated_args = self._args;
+					let mut updated_args = self.args;
 					updated_args.second_builder = Some(args);
 					Self {
-						_args: updated_args,
+						args: updated_args,
 					}
 				}
 			}
 
 			impl UniversalBuilder {
-				pub fn build(self) -> UniversalTestBuilderContext {
-					let UniversalTestBuilderArgs {
+				pub fn build(self) -> UniversalBuilderContext {
+					let UniversalBuilderArgs {
 						first_builder,
 						second_builder,
-					} = self._args;
+					} = self.args;
 					let first_builder = first_builder.map(|args| FirstBuilder::build(args));
 					let second_builder = second_builder.map(|args| SecondBuilder::build(args));
-					UniversalTestBuilderContext {
+					UniversalBuilderContext {
 						first_builder,
 						second_builder,
 					}
 				}
 			}
 
-			impl UniversalTestBuilderContext {
+			impl UniversalBuilderContext {
 				pub fn execute<F>(self, test: F)
 				where
-					F: Fn(Self) -> (),
+					F: FnOnce(Self),
 				{
 					test(self);
 				}
 
 				pub async fn async_execute<F, Fut>(self, test: F)
 				where
-					F: Fn(Self) -> Fut,
+					F: FnOnce(Self) -> Fut,
 					Fut: core::future::Future<Output = ()>,
 				{
 					test(self).await;
