@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `Builder2: rustilities::universal_test_builder::Builder` is not satisfied
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `rustilities::universal_test_builder::Builder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^
+help: the trait `rustilities::universal_test_builder::Builder` is implemented for `Builder1`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:9:1
+   |
+ 9 | impl Builder for Builder1 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `universal_test_builder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `Builder2: rustilities::universal_test_builder::Builder` is not satisfied
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `rustilities::universal_test_builder::Builder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^
+help: the trait `rustilities::universal_test_builder::Builder` is implemented for `Builder1`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:9:1
+   |
+ 9 | impl Builder for Builder1 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Builder2: rustilities::universal_test_builder::Builder` is not satisfied
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `rustilities::universal_test_builder::Builder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^
+help: the trait `rustilities::universal_test_builder::Builder` is implemented for `Builder1`
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:9:1
+   |
+ 9 | impl Builder for Builder1 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `build` found for struct `Builder2` in the current scope
+  --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:20:1
+   |
+18 | struct Builder2;
+   | --------------- function or associated item `build` not found for this struct
+19 |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `Builder2`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `build`, perhaps you need to implement it:
+           candidate #1: `rustilities::universal_test_builder::Builder`
+   = note: this error originates in the attribute macro `universal_test_builder` (in Nightly builds, run with -Z macro-backtrace for more info)

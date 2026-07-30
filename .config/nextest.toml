@@ -1,0 +1,11 @@
+[test-groups]
+fmt = { max-threads = 1 }
+manifest = { max-threads = 1}
+
+[[profile.default.overrides]]
+filter = 'package(rustilities) and test(fmt::tests)'
+test-group = 'fmt'
+
+[[profile.default.overrides]]
+filter = 'package(rustilities) and test(manifest::tests)'
+test-group = 'manifest'

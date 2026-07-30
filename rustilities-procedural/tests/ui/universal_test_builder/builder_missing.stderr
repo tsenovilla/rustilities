@@ -1,0 +1,5 @@
+error: unexpected token in universal_test_builder
+  --> tests/ui/universal_test_builder/builder_missing.rs:31:49
+   |
+31 | #[universal_test_builder({builder = Builder1}, {Builder2, async_builder})]
+   |                                                 ^^^^^^^^

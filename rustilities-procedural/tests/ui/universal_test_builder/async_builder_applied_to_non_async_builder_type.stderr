@@ -1,0 +1,50 @@
+error[E0277]: the trait bound `Builder2: AsyncBuilder` is not satisfied
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `AsyncBuilder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^
+   = note: this error originates in the attribute macro `universal_test_builder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no function or associated item named `async_build` found for struct `Builder2` in the current scope
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:20:1
+   |
+18 | struct Builder2;
+   | --------------- function or associated item `async_build` not found for this struct
+19 |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `Builder2`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `async_build`, perhaps you need to implement it:
+           candidate #1: `AsyncBuilder`
+   = note: this error originates in the attribute macro `universal_test_builder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `Builder2: AsyncBuilder` is not satisfied
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `AsyncBuilder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Builder2: AsyncBuilder` is not satisfied
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:20:1
+   |
+20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder})]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `AsyncBuilder` is not implemented for `Builder2`
+  --> tests/ui/universal_test_builder/async_builder_applied_to_non_async_builder_type.rs:18:1
+   |
+18 | struct Builder2;
+   | ^^^^^^^^^^^^^^^

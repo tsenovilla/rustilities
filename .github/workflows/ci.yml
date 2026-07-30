@@ -10,19 +10,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-check-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          
       - name: Check
         run: |
-          cargo check --all-features --release --tests
+          cargo check --all-features --workspace --release
 
   fmt:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
       - name: Install nightly rustfmt
         run: rustup toolchain install nightly --component rustfmt 
+
       - name: Fmt
         run: |
           cargo +nightly fmt --all --check
@@ -33,23 +48,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-clippy-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Clippy
         run: |
           cargo clippy --all-features -- -D warnings
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    needs: [check, fmt]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
-      - name: Run unit tests
-        run: |
-          cargo test --features paths,parsing --lib
-          # This feature's test play with the toolchain, so they must run in a single thread to avoid race conditions
-          cargo test --features fmt,manifest --lib -- --test-threads=1
 
   doc-tests:
     runs-on: ubuntu-latest
@@ -57,39 +70,209 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-doc-tests-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Run doc tests
         run: |
           cargo test --all-features --doc
 
-  coverage:
+  documentation:
+    needs: [check, fmt]
     runs-on: ubuntu-latest
-    needs: unit-tests
+    env:
+      # We cannot propagate the "mising_docs" flag, as otherwise other tests fail.
+      RUSTFLAGS: "-Dwarnings -Dmissing_docs"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
-      - name: Install nightly llvm-tools-preview
-        run: rustup toolchain install nightly --component llvm-tools-preview
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-documentation-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Check no default features
+        run: cargo doc --no-deps
+
+  build-tests-with-coverage:
+    runs-on: ubuntu-latest
+    needs: [check, fmt]
+    env:
+      CARGO_TARGET_DIR: target/llvm-cov-target
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-coverage-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Generate code coverage
+      
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Build and archive instrumented tests
         run: |
-          cargo llvm-cov \
-          --features paths,parsing \
-          --codecov \
-          --ignore-filename-regex "/tests\.rs$" \
-          --output-path cov_no_fmt.json
-          cargo llvm-cov \
-          --features fmt,manifest \
-          --codecov \
-          --ignore-filename-regex "/tests\.rs$" \
-          --output-path cov_fmt.json \
-          -- \
-          --test-threads=1
-      - name: Upload coverage to Codecov
+          source <(cargo llvm-cov show-env --export-prefix)
+          cargo nextest archive \
+           --all-features \
+           --workspace \
+           --lib \
+           --archive-file nextest-archive.tar.zst
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload test archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-archive
+          path: nextest-archive.tar.zst
+          retention-days: 1
+
+  run-tests-with-coverage:
+    needs: build-tests-with-coverage
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1,2,3,4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Download test archive
+        uses: actions/download-artifact@v4
+        with:
+          name: nextest-archive
+
+      - name: Run tests with coverage
+        run: |
+          cargo llvm-cov nextest \
+          --archive-file nextest-archive.tar.zst \
+          --partition count:${{ matrix.partition }}/4 \
+          --ignore-filename-regex "/tests\.rs$|rustilities-procedural/src/(lib|universal_test_builder)\.rs" \
+          --no-report \
+          --no-fail-fast \
+          --status-level all
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rename profraw files with partition prefix
+        run: |
+          for f in target/llvm-cov-target/*.profraw; do
+            [ -f "$f" ] && mv "$f" "${f%.profraw}-p${{ matrix.partition }}.profraw"
+          done
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ matrix.partition }}
+          path: target/llvm-cov-target/*.profraw
+          retention-days: 1
+
+  upload-coverage:
+    needs: run-tests-with-coverage
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: target/llvm-cov-target
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Download test archive
+        uses: actions/download-artifact@v4
+        with:
+          name: nextest-archive
+
+      - name: Download coverage data (profraw files)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+          path: target/llvm-cov-target
+
+      - name: Setup llvm-cov environment and extract test binaries
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          mkdir -p target/llvm-cov-target
+          tar --zstd -xf nextest-archive.tar.zst --strip-components=1 -C target/llvm-cov-target
+
+      - name: Generate merged coverage report
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          cargo llvm-cov report --codecov --output-path codecov.json
+
+      - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: cov_no_fmt.json, cov_fmt.json
+          files: codecov.json
           fail_ci_if_error: true
+
+  run-integration-tests:
+    runs-on: ubuntu-latest
+    needs: [check, fmt]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true 
+          cache-all-crates: true
+          shared-key: rustilities-integration-tests-cache
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+    
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Run tests
+        run: |
+          cargo nextest run \
+          --all-features \
+          --workspace \
+          --test universal_test_builder \
+          --test universal_test_builder_async \
+          --test ui

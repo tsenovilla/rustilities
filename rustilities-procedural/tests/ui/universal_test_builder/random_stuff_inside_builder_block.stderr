@@ -1,0 +1,5 @@
+error: unexpected token in universal_test_builder
+  --> tests/ui/universal_test_builder/random_stuff_inside_builder_block.rs:31:84
+   |
+31 | #[universal_test_builder({builder = Builder1}, {builder = Builder2, async_builder, and other random stuff})]
+   |                                                                                    ^^^
