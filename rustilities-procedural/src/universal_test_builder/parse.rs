@@ -83,10 +83,7 @@ impl Parse for UniversalTestBuilderInput {
 			if !seen.insert(name) {
 				return Err(Error::new(
 					block.builder.span(),
-					format!(
-						"duplicate builder '{}' in universal_test_builder",
-						block.builder
-					),
+					format!("duplicate builder '{}' in universal_test_builder", block.builder),
 				));
 			}
 		}
@@ -105,8 +102,8 @@ fn to_snake_case(s: &str) -> String {
 			if i > 0 {
 				let prev = chars[i - 1];
 				let next = chars.get(i + 1);
-				if prev.is_lowercase()
-					|| (prev.is_uppercase() && next.is_some_and(|n| n.is_lowercase()))
+				if prev.is_lowercase() ||
+					(prev.is_uppercase() && next.is_some_and(|n| n.is_lowercase()))
 				{
 					result.push('_');
 				}

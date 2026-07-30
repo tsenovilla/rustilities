@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-#[cfg(test)]
+#[cfg(all(test, feature = "universal-test-builder"))]
 mod tests;
 
 use crate::Error;

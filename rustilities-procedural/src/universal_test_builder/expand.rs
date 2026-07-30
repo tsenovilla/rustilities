@@ -157,6 +157,32 @@ pub(crate) fn expand_universal_test_builder(
 		}
 	};
 
+	let post_build_calls: Vec<TokenStream> = builders
+		.iter()
+		.zip(builders_snake_case.iter())
+		.zip(is_async.iter())
+		.map(|((builder, snake), &is_async)| {
+			let trait_path = if is_async {
+				quote::quote! { rustilities::universal_test_builder::AsyncBuilder }
+			} else {
+				quote::quote! { rustilities::universal_test_builder::Builder }
+			};
+			quote::quote! {
+				if let Some(output) = self.#snake.take() {
+					<#builder as #trait_path>::on_drop(output);
+				}
+			}
+		})
+		.collect();
+
+	let drop_impl = quote::quote! {
+		impl Drop for #context_name {
+			fn drop(&mut self) {
+				#(#post_build_calls)*
+			}
+		}
+	};
+
 	quote::quote! {
 		#universal_test_builder_args
 		#universal_test_builder_output
@@ -164,6 +190,7 @@ pub(crate) fn expand_universal_test_builder(
 		#transition_functions
 		#build_methods
 		#execute_methods
+		#drop_impl
 	}
 }
 
@@ -276,6 +303,17 @@ mod tests {
 					test(self).await;
 				}
 			}
+
+			impl Drop for UniversalBuilderContext {
+				fn drop(&mut self) {
+					if let Some(output) = self.first_builder.take() {
+						<FirstBuilder as rustilities::universal_test_builder::Builder>::on_drop(output);
+					}
+					if let Some(output) = self.second_builder.take() {
+						<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::on_drop(output);
+					}
+				}
+			}
 		};
 
 		assert!(rustilities::parsing::syntactic_token_stream_compare(actual, expected));
@@ -367,6 +405,17 @@ mod tests {
 					Fut: core::future::Future<Output = ()>,
 				{
 					test(self).await;
+				}
+			}
+
+			impl Drop for UniversalBuilderContext {
+				fn drop(&mut self) {
+					if let Some(output) = self.first_builder.take() {
+						<FirstBuilder as rustilities::universal_test_builder::Builder>::on_drop(output);
+					}
+					if let Some(output) = self.second_builder.take() {
+						<SecondBuilder as rustilities::universal_test_builder::Builder>::on_drop(output);
+					}
 				}
 			}
 		};
