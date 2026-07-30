@@ -30,7 +30,9 @@ pub trait AsyncBuilder {
 
 pub use rustilities_procedural::universal_test_builder;
 
+#[cfg(test)]
 use builders::{RustupComponent, TempDir, TempRustProject};
 
+#[cfg(test)]
 #[universal_test_builder({builder = TempDir}, {builder = TempRustProject}, {builder = RustupComponent})]
 pub struct UniversalTestBuilder;

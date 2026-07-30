@@ -11,7 +11,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: "./.github/actions/init"
+
+      - name: Toolchain
+        uses: crusty-pie/toolchain@v1
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rustilities-check-cache
+          save-if: false
 
       - name: Publish to crates.io
         env:

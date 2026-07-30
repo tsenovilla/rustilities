@@ -3,9 +3,7 @@
 use super::*;
 use crate::universal_test_builder::{
 	UniversalTestBuilder,
-	builders::{
-		ProjectKind, RustupComponentArgs, TempRustProjectArgs,
-	},
+	builders::{ProjectKind, RustupComponentArgs, TempRustProjectArgs},
 };
 use std::{io::ErrorKind, path::PathBuf};
 
@@ -17,8 +15,7 @@ pub enum A {
 }"#;
 
 fn make_crate_args(invalid_code: bool) -> TempRustProjectArgs {
-	let not_fmt_code =
-		if invalid_code { "pub enum A {A,B,C};" } else { "pub enum A {A,B,C}" };
+	let not_fmt_code = if invalid_code { "pub enum A {A,B,C};" } else { "pub enum A {A,B,C}" };
 	TempRustProjectArgs {
 		kind: ProjectKind::Crate {
 			files: vec![

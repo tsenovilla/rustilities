@@ -180,10 +180,10 @@ jobs:
 
       - name: Run tests with coverage
         run: |
+          mkdir -p target/llvm-cov-target
           cargo llvm-cov nextest \
           --archive-file nextest-archive.tar.zst \
           --partition count:${{ matrix.partition }}/4 \
-          --ignore-filename-regex "/tests\.rs$|rustilities-procedural/src/(lib|universal_test_builder)\.rs" \
           --no-report \
           --no-fail-fast \
           --status-level all
@@ -238,7 +238,9 @@ jobs:
       - name: Generate merged coverage report
         run: |
           source <(cargo llvm-cov show-env --sh)
-          cargo llvm-cov report --codecov --output-path codecov.json
+          cargo llvm-cov report \
+          --ignore-filename-regex "/tests\.rs$|rustilities-procedural/src/(lib|universal_test_builder)\.rs" \
+          --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
