@@ -1,9 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use super::*;
 use crate::universal_test_builder::{
 	UniversalTestBuilder,
-	builders::{ProjectKind, RustupComponentArgs, TempRustProjectArgs},
+	builders::{
+		rustup_component::RustupComponentArgs,
+		temp_rust_project::{ProjectKind, TempRustProjectArgs},
+	},
 };
 use std::{io::ErrorKind, path::PathBuf};
 
@@ -46,7 +49,7 @@ fn format_dir_works_if_nightly_available() {
 		.with_rustup_component(nightly_rustfmt_args(true))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(format_dir(&project.project_path).is_ok());
 			assert_eq!(
 				std::fs::read_to_string(project.project_path.join("src/fmt_code_path.rs"))
@@ -64,7 +67,7 @@ fn format_dir_works_if_nightly_fmt_not_available() {
 		.with_rustup_component(nightly_rustfmt_args(false))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(format_dir(&project.project_path).is_ok());
 			assert_eq!(
 				std::fs::read_to_string(project.project_path.join("src/fmt_code_path.rs"))
@@ -82,7 +85,7 @@ fn format_dir_fails_if_the_dir_cannot_be_formatted() {
 		.with_rustup_component(nightly_rustfmt_args(false))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let not_fmt_code_path = project.project_path.join("src/not_fmt_code_path.rs");
 			match format_dir(&project.project_path) {
 				Err(Error::Descriptive(msg)) => {
@@ -100,7 +103,7 @@ fn format_dir_fails_with_nightly_available_if_io_error() {
 		.with_rustup_component(nightly_rustfmt_args(true))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			match format_dir(project.project_path.join("dir")) {
 				Err(Error::IO(err)) => {
 					assert_eq!(err.kind(), ErrorKind::NotFound);
@@ -117,7 +120,7 @@ fn format_dir_fails_without_nightly_available_if_io_error() {
 		.with_rustup_component(nightly_rustfmt_args(false))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			match format_dir(project.project_path.join("dir")) {
 				Err(Error::IO(err)) => {
 					assert_eq!(err.kind(), ErrorKind::NotFound);

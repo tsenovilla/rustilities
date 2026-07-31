@@ -1,12 +1,11 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
-mod rustup_component;
-mod temp_dir;
-mod temp_rust_project;
-
-pub use rustup_component::{RustupComponent, RustupComponentArgs, RustupComponentOutput};
-pub use temp_dir::TempDir;
-pub use temp_rust_project::{
-	CallingDirOverride, ProjectKind, ProjectMember, TempRustProject, TempRustProjectArgs,
-	TempRustProjectOutput,
-};
+#[cfg(all(feature = "universal-test-builder", feature = "diesel-async"))]
+mod diesel_async_postgres_db;
+#[cfg(all(feature = "universal-test-builder", feature = "diesel"))]
+pub mod diesel_postgres_db;
+#[cfg(all(feature = "universal-test-builder", feature = "postgres"))]
+pub mod postgres_db;
+pub mod rustup_component;
+pub mod temp_dir;
+pub mod temp_rust_project;

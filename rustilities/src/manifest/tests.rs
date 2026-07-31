@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use super::*;
 use crate::universal_test_builder::{
 	UniversalTestBuilder,
-	builders::{CallingDirOverride, ProjectKind, ProjectMember, TempRustProjectArgs},
+	builders::temp_rust_project::{
+		CallingDirOverride, ProjectKind, ProjectMember, TempRustProjectArgs,
+	},
 };
 use std::{io::ErrorKind, path::Component};
 
@@ -50,7 +52,7 @@ fn find_innermost_manifest_finds_manifest_from_different_parts_of_a_crate() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let paths = [
 				project.project_path.clone(),
 				project.manifest_path.clone(),
@@ -79,7 +81,7 @@ fn find_innermost_manifest_finds_manifest_from_different_parts_of_a_crate_if_cal
 			..Default::default()
 		})
 		.build()
-		.execute(|context| {
+		.execute(|_context| {
 			let expected =
 				<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).join("Cargo.toml");
 			let paths: Vec<PathBuf> = vec![
@@ -104,7 +106,7 @@ fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_worksp
 		.with_temp_rust_project(workspace_args(true, true, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let crate_manifest = &project.member_manifests[0];
 			let crate_path = &project.member_paths[0];
 
@@ -176,7 +178,7 @@ fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_worksp
 		))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let crate_manifest_rel = <Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir)
 				.join("crate")
 				.join("Cargo.toml");
@@ -216,7 +218,7 @@ fn find_innermost_manifest_finds_right_manifest_from_different_parts_of_a_worksp
 #[test]
 fn find_innermost_manifest_doesnt_find_manifest_if_not_rust_dir() {
 	UniversalTestBuilder::default().with_temp_dir(()).build().execute(|context| {
-		let dir = context.temp_dir.as_ref().unwrap();
+		let dir = context.temp_dir();
 		let non_crate_path = dir.path().join("somewhere");
 		let non_crate_inner = non_crate_path.join("somewhere_deeper");
 		std::fs::create_dir_all(&non_crate_inner).unwrap();
@@ -232,7 +234,7 @@ fn find_workspace_manifest_finds_manifest_from_different_parts_of_a_workspace() 
 		.with_temp_rust_project(workspace_args(true, true, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let crate_path = &project.member_paths[0];
 
 			let crate_paths = [
@@ -267,7 +269,7 @@ fn find_workspace_manifest_finds_manifest_from_different_parts_of_a_workspace_if
 		))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let workspace_manifest_rel =
 				<Component<'_> as AsRef<Path>>::as_ref(&Component::CurDir).join("Cargo.toml");
 
@@ -298,7 +300,7 @@ fn find_workspace_manifest_doesnt_find_manifest_if_not_workspace() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			// A standalone crate is not a workspace
 			assert!(find_workspace_manifest(&project.project_path).is_none());
 			assert!(find_workspace_manifest(&project.manifest_path).is_none());
@@ -312,7 +314,7 @@ fn find_crate_name_finds_name_if_crate_manifest_path_used() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert_eq!(
 				find_crate_name(&project.manifest_path).expect("This should be Some; qed;"),
 				"test"
@@ -323,8 +325,8 @@ fn find_crate_name_finds_name_if_crate_manifest_path_used() {
 #[test]
 fn find_crate_doesnt_finds_name_if_not_crate_manifest_path_used() {
 	UniversalTestBuilder::default().with_temp_dir(()).build().execute(|context| {
-		let dir = context.temp_dir.as_ref().unwrap();
-		assert!(find_crate_name(&dir.path()).is_none());
+		let dir = context.temp_dir();
+		assert!(find_crate_name(dir.path()).is_none());
 	});
 }
 
@@ -334,7 +336,7 @@ fn add_dependency_to_dependencies_table_workspace_dependency() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -362,7 +364,7 @@ fn add_dependency_to_dependencies_table_crates_io_dependency() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -390,7 +392,7 @@ fn add_dependency_to_dependencies_table_git_dependency() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -421,7 +423,7 @@ fn add_dependency_to_dependencies_table_local_dependency() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -449,7 +451,7 @@ fn add_dependency_to_dependencies_table_dependency_no_default_features() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -480,7 +482,7 @@ fn add_dependency_to_dependencies_table_dependency_with_features() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -511,7 +513,7 @@ fn add_dependency_to_dependencies_table_optional_dependency() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let mut doc = std::fs::read_to_string(&project.manifest_path)
 				.unwrap()
 				.parse::<DocumentMut>()
@@ -542,7 +544,7 @@ fn add_crate_to_dependencies_crate_manifest_with_dependencies_section() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(
 				add_crate_to_dependencies(
 					&project.manifest_path,
@@ -571,7 +573,7 @@ fn add_crate_to_dependencies_workspace_manifest_with_dependencies_section() {
 		.with_temp_rust_project(workspace_args(false, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(
 				add_crate_to_dependencies(
 					&project.manifest_path,
@@ -599,7 +601,7 @@ fn add_crate_to_dependencies_crate_manifest_without_dependencies_section() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			std::fs::write(
 				&project.manifest_path,
 				r#"
@@ -645,7 +647,7 @@ fn add_crate_to_dependencies_workspace_manifest_without_dependencies_section() {
 		.with_temp_rust_project(workspace_args(false, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			std::fs::write(
 				&project.manifest_path,
 				r#"
@@ -690,7 +692,7 @@ fn add_crate_to_dependencies_works_for_empty_manifest() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			std::fs::write(&project.manifest_path, "").expect("Manifest should be writable; qed;");
 			assert!(
 				add_crate_to_dependencies(
@@ -718,7 +720,7 @@ dependency = { workspace = true }
 #[test]
 fn add_crate_to_dependencies_fails_if_manifest_path_isnt_readable() {
 	UniversalTestBuilder::default().with_temp_dir(()).build().execute(|context| {
-		let dir = context.temp_dir.as_ref().unwrap();
+		let dir = context.temp_dir();
 		assert!(matches!(
 			add_crate_to_dependencies(
 				dir.path().join("unexisting/path/Cargo.toml"),
@@ -741,7 +743,7 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_parsed() {
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			// Use main.rs (not a valid manifest) as the manifest path
 			assert!(matches!(
 				add_crate_to_dependencies(
@@ -765,7 +767,7 @@ fn add_crate_to_dependencies_fails_if_manifest_path_cannot_be_written() {
 		.with_temp_rust_project(workspace_args(false, false, true, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(matches!(
 				add_crate_to_dependencies(
 					&project.manifest_path,
@@ -788,7 +790,7 @@ fn add_crate_to_workspace_works_if_members_exist() {
 		.with_temp_rust_project(workspace_args(true, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let crate_path = project.project_path.join("crate2");
 			assert!(add_crate_to_workspace(&project.manifest_path, crate_path).is_ok());
 
@@ -797,18 +799,14 @@ fn add_crate_to_workspace_works_if_members_exist() {
 				.parse::<DocumentMut>()
 				.unwrap();
 			if let Some(Item::Table(workspace_table)) = doc.get("workspace") {
-				if let Some(Item::Value(members_array)) = workspace_table.get("members") {
-					if let Value::Array(array) = members_array {
-						assert!(array.into_iter().any(|member| {
-							if let Value::String(member) = member {
-								member.clone().into_value() == "crate2"
-							} else {
-								false
-							}
-						}));
-					} else {
-						panic!("Failed");
-					}
+				if let Some(Item::Value(Value::Array(array))) = workspace_table.get("members") {
+					assert!(array.into_iter().any(|member| {
+						if let Value::String(member) = member {
+							member.clone().into_value() == "crate2"
+						} else {
+							false
+						}
+					}));
 				} else {
 					panic!("Failed");
 				}
@@ -824,7 +822,7 @@ fn add_crate_to_workspace_works_if_members_doesnt_exist() {
 		.with_temp_rust_project(workspace_args(true, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			std::fs::write(
 				&project.manifest_path,
 				r#"
@@ -843,18 +841,14 @@ resolver = "2"
 				.parse::<DocumentMut>()
 				.unwrap();
 			if let Some(Item::Table(workspace_table)) = doc.get("workspace") {
-				if let Some(Item::Value(members_array)) = workspace_table.get("members") {
-					if let Value::Array(array) = members_array {
-						assert!(array.into_iter().any(|member| {
-							if let Value::String(member) = member {
-								member.clone().into_value() == "crate2"
-							} else {
-								false
-							}
-						}));
-					} else {
-						panic!("Failed");
-					}
+				if let Some(Item::Value(Value::Array(array))) = workspace_table.get("members") {
+					assert!(array.into_iter().any(|member| {
+						if let Value::String(member) = member {
+							member.clone().into_value() == "crate2"
+						} else {
+							false
+						}
+					}));
 				} else {
 					panic!("Failed");
 				}
@@ -870,7 +864,7 @@ fn add_crate_to_workspace_hasnt_effect_if_member_already_present() {
 		.with_temp_rust_project(workspace_args(true, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			let crate_path = project.project_path.join("crate");
 			let manifest_before_call = std::fs::read_to_string(&project.manifest_path).unwrap();
 			assert!(add_crate_to_workspace(&project.manifest_path, crate_path).is_ok());
@@ -882,7 +876,7 @@ fn add_crate_to_workspace_hasnt_effect_if_member_already_present() {
 #[test]
 fn add_crate_to_workspace_fails_if_the_workspace_manifest_path_cannot_be_read() {
 	UniversalTestBuilder::default().with_temp_dir(()).build().execute(|context| {
-		let dir = context.temp_dir.as_ref().unwrap();
+		let dir = context.temp_dir();
 		assert!(matches!(
 			add_crate_to_workspace(
 				dir.path().join("unexisting/path/Cargo.toml"),
@@ -899,7 +893,7 @@ fn add_crate_to_workspace_fails_if_manifest_path_cannot_be_parsed_as_manifest() 
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(matches!(
 				add_crate_to_workspace(project.project_path.join("src/main.rs"), "dependency",),
 				Err(Error::TomlEdit(_))
@@ -913,7 +907,7 @@ fn add_crate_to_workspace_fails_if_crate_path_isnt_prefixed_by_workspace_path() 
 		.with_temp_rust_project(workspace_args(true, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(matches!(
 				add_crate_to_workspace(&project.manifest_path, "dependency",),
 				Err(Error::StripPrefixError(_))
@@ -927,7 +921,7 @@ fn add_crate_to_workspace_fails_if_members_section_isnt_an_array() {
 		.with_temp_rust_project(workspace_args(true, false, false, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			std::fs::write(
 				&project.manifest_path,
 				r#"
@@ -943,7 +937,7 @@ members = "1"
 			assert!(matches!(
 				add_crate_to_workspace(
 					&project.manifest_path,
-					&project.project_path.join("dependency"),
+					project.project_path.join("dependency"),
 				),
 				Err(Error::Descriptive(expected_error)) if expected_error == "The provided manifest path members field is corrupted"
 			));
@@ -956,11 +950,11 @@ fn add_crate_to_workspace_fails_if_the_target_manifest_isnt_a_workspace_manifest
 		.with_temp_rust_project(crate_args())
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(matches!(
 				add_crate_to_workspace(
 					&project.manifest_path,
-					&project.project_path.join("dependency"),
+					project.project_path.join("dependency"),
 				),
 				Err(Error::Descriptive(expected_error)) if expected_error == "The provided manifest path isn't a workspace manifest"
 			));
@@ -973,11 +967,11 @@ fn add_crate_to_workspace_fails_if_manifest_path_cannot_be_written() {
 		.with_temp_rust_project(workspace_args(false, false, true, None))
 		.build()
 		.execute(|context| {
-			let project = context.temp_rust_project.as_ref().unwrap();
+			let project = context.temp_rust_project();
 			assert!(matches!(
 				add_crate_to_workspace(
 					&project.manifest_path,
-					&project.project_path.join("dependency"),
+					project.project_path.join("dependency"),
 				),
 				Err(Error::IO(err)) if err.kind() == ErrorKind::PermissionDenied
 			));

@@ -14,6 +14,47 @@ Please refer to the specific documentation for each part of the crate to learn m
 
 The crate splits its functionalities into several features, allowing the compilation of only the parts that are needed. 
 
+### Highlight: universal test builder 🧪
+
+Composable test harnesses with pay-per-use resources and guaranteed cleanup:
+
+```rust
+use rustilities::universal_test_builder::{
+	builders::{RustupComponent, TempDir},
+	universal_test_builder,
+};
+
+#[universal_test_builder({builder = TempDir}, {builder = RustupComponent})]
+struct MyTestBuilder;
+
+MyTestBuilder::default()
+	.with_temp_dir(()) // request only what the test needs; the rest is never built
+	.build()
+	.execute(|context| {
+		assert!(context.temp_dir().path().is_dir());
+	});
+// Context dropped: every built resource ran its cleanup.
+```
+
+Batteries included: temp dirs, throwaway Rust projects, rustup components, and
+disposable Postgres containers (plain URL, diesel connections, applied migrations,
+diesel-async pools) behind the `postgres`/`diesel`/`diesel-async` features.
+
+Check Rust docs for further insights on the feature
+
 # Contributing 🤝🚀
 
 Any contribution is more than welcome! 🤝🦾 Just open a PR with your changes and it'll be considered 😸
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for
+inclusion in the work by you shall be dual licensed as below, without any additional
+terms or conditions.
+
+# License 📄
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+
+at your option.

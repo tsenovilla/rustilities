@@ -1,27 +1,44 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::universal_test_builder::Builder;
 use std::path::{Path, PathBuf};
 
+/// Shape of the generated project. Files are `(path relative to the crate root,
+/// content)` pairs; a default `Cargo.toml` and an empty `src/lib.rs` are generated
+/// for any crate that does not provide them.
 pub enum ProjectKind {
+	/// A single crate.
 	Crate { files: Vec<(PathBuf, String)> },
+	/// A workspace: one crate per member, plus optional non-crate directories
+	/// (created empty) listed in the root.
 	Workspace { members: Vec<ProjectMember>, non_crate_paths: Vec<PathBuf> },
 }
 
+/// One member crate of a [`ProjectKind::Workspace`].
 pub struct ProjectMember {
+	/// Crate name; also its directory under the workspace root.
 	pub name: String,
+	/// `(path relative to the member root, content)` pairs.
 	pub files: Vec<(PathBuf, String)>,
+	/// Make this member's `Cargo.toml` read-only (restored on cleanup).
 	pub read_only_manifest: bool,
 }
 
+/// Where to `cd` while the test runs; the original working directory is restored on
+/// cleanup.
 pub enum CallingDirOverride {
+	/// The project (or workspace) root.
 	ProjectRoot,
+	/// A member crate's directory, by name.
 	MemberCrate(String),
 }
 
 pub struct TempRustProjectArgs {
+	/// Whether to lay out a single crate or a whole workspace.
 	pub kind: ProjectKind,
+	/// Make the root `Cargo.toml` read-only (restored on cleanup).
 	pub read_only_manifest: bool,
+	/// Optionally `cd` into the project while the test runs.
 	pub calling_dir_override: Option<CallingDirOverride>,
 }
 
@@ -36,17 +53,24 @@ impl Default for TempRustProjectArgs {
 }
 
 pub struct TempRustProjectOutput {
+	/// Owns the temporary directory: the project lives as long as this does.
 	pub tempdir: tempfile::TempDir,
+	/// Root of the generated project.
 	pub project_path: PathBuf,
+	/// Path of the root `Cargo.toml`.
 	pub manifest_path: PathBuf,
-	/// Only populated for workspaces.
+	/// Member crate roots. Only populated for workspaces.
 	pub member_paths: Vec<PathBuf>,
+	/// Member `Cargo.toml` paths. Only populated for workspaces.
 	pub member_manifests: Vec<PathBuf>,
+	/// Absolute paths of the non-crate directories created in the workspace root.
 	pub non_crate_paths: Vec<PathBuf>,
 	original_dir: Option<PathBuf>,
 	read_only_paths: Vec<PathBuf>,
 }
 
+/// A throwaway Rust crate or workspace laid out in a temporary directory, optionally
+/// overriding the process working directory; everything is restored/deleted on cleanup.
 pub struct TempRustProject;
 
 impl Builder for TempRustProject {

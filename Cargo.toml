@@ -3,9 +3,9 @@ resolver = "2"
 members = ["rustilities", "rustilities-procedural"]
 
 [workspace.package]
-version = "3.1.1"
+version = "3.2.0"
 repository = "https://github.com/tsenovilla/rustilities"
-license = "GPL-3.0"
+license = "MIT OR Apache-2.0"
 edition = "2024"
 rust-version = "1.93.0"
 description = "This crate offers a few utils for Rust development"
@@ -14,10 +14,14 @@ documentation = "https://docs.rs/rustilities"
 [workspace.dependencies]
 async-trait = "0.1.89"
 cargo_toml = "0.22.3"
+diesel = "2.3"
+diesel-async = "0.9.2"
+diesel_migrations = "2"
 proc-macro2 = "1.0.93"
 quote = "1.0.44"
 syn = "2.0.98"
 tempfile = "3.16.0"
+testcontainers-modules = "0.15"
 thiserror = "2.0.11"
 tokio = "1.49.0"
 toml_edit = "0.24.0"
@@ -25,4 +29,4 @@ trybuild = "1.0.115"
 
 # local crates
 rustilities = { path = "rustilities" }
-rustilities-procedural = { path = "rustilities-procedural", version = "3.1.1" }
+rustilities-procedural = { path = "rustilities-procedural", version = "3.2.0" }

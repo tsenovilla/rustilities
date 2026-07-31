@@ -95,14 +95,14 @@ help: the following other types implement trait `rustilities::universal_test_bui
    | impl Builder for TempRustProject {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `TempRustProject`
 
-error[E0599]: no function or associated item named `build` found for struct `Builder2` in the current scope
+error[E0599]: no associated function or constant named `build` found for struct `Builder2` in the current scope
   --> tests/ui/universal_test_builder/builder_applied_to_non_builder_type.rs:20:1
    |
 18 | struct Builder2;
-   | --------------- function or associated item `build` not found for this struct
+   | --------------- associated function or constant `build` not found for this struct
 19 |
 20 | #[universal_test_builder({builder = Builder1}, {builder = Builder2})]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `Builder2`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated function or constant not found in `Builder2`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `build`, perhaps you need to implement it:

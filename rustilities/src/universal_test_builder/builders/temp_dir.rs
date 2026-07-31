@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::universal_test_builder::Builder;
 
+/// A temporary directory, deleted when the context drops.
 pub struct TempDir;
 impl Builder for TempDir {
 	type Args = ();

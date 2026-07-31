@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use super::*;
 
@@ -14,9 +14,9 @@ fn manifest_dependency_config_new_works() {
 		true,
 	);
 	assert_eq!(dependency_config.origin, ManifestDependencyOrigin::crates_io(version));
-	assert_eq!(dependency_config.default_features, false);
+	assert!(!dependency_config.default_features);
 	assert_eq!(dependency_config.features, vec![feature1, feature2]);
-	assert_eq!(dependency_config.optional, true);
+	assert!(dependency_config.optional);
 }
 
 #[test]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::universal_test_builder::parse::{DerivedStreams, UniversalTestBuilderInput};
 use proc_macro2::TokenStream;
@@ -34,7 +34,7 @@ pub(crate) fn expand_universal_test_builder(
 	let universal_test_builder_output = quote::quote! {
 		pub struct #context_name {
 			#(
-				pub #builders_snake_case: Option<#builder_outputs>,
+				#builders_snake_case: Option<#builder_outputs>,
 			)*
 		}
 	};
@@ -138,8 +138,29 @@ pub(crate) fn expand_universal_test_builder(
 		}
 	};
 
+	let accessors_mut: Vec<Ident> = builders_snake_case
+		.iter()
+		.map(|snake| quote::format_ident!("{}_mut", snake))
+		.collect();
+
+	let accessors_panic_messages: Vec<String> = builders_snake_case
+		.iter()
+		.zip(builders_transition_functions.iter())
+		.map(|(snake, transition)| format!("`{snake}` was not requested: call `{transition}()`"))
+		.collect();
+
 	let execute_methods = quote::quote! {
 		impl #context_name {
+			#(
+				pub fn #builders_snake_case(&self) -> &#builder_outputs {
+					self.#builders_snake_case.as_ref().expect(#accessors_panic_messages)
+				}
+
+				pub fn #accessors_mut(&mut self) -> &mut #builder_outputs {
+					self.#builders_snake_case.as_mut().expect(#accessors_panic_messages)
+				}
+			)*
+
 			pub fn execute<F>(self, test: F)
 			where
 				F: FnOnce(Self),
@@ -222,8 +243,8 @@ mod tests {
 			}
 
 			pub struct UniversalBuilderContext {
-				pub first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
-				pub second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output>,
+				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
+				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output>,
 			}
 
 			pub struct UniversalBuilder {
@@ -288,6 +309,22 @@ mod tests {
 			}
 
 			impl UniversalBuilderContext {
+				pub fn first_builder(&self) -> &<FirstBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.first_builder.as_ref().expect("`first_builder` was not requested: call `with_first_builder()`")
+				}
+
+				pub fn first_builder_mut(&mut self) -> &mut <FirstBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.first_builder.as_mut().expect("`first_builder` was not requested: call `with_first_builder()`")
+				}
+
+				pub fn second_builder(&self) -> &<SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output {
+					self.second_builder.as_ref().expect("`second_builder` was not requested: call `with_second_builder()`")
+				}
+
+				pub fn second_builder_mut(&mut self) -> &mut <SecondBuilder as rustilities::universal_test_builder::AsyncBuilder>::Output {
+					self.second_builder.as_mut().expect("`second_builder` was not requested: call `with_second_builder()`")
+				}
+
 				pub fn execute<F>(self, test: F)
 				where
 					F: FnOnce(Self),
@@ -342,8 +379,8 @@ mod tests {
 			}
 
 			pub struct UniversalBuilderContext {
-				pub first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
-				pub second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::Builder>::Output>,
+				first_builder: Option<<FirstBuilder as rustilities::universal_test_builder::Builder>::Output>,
+				second_builder: Option<<SecondBuilder as rustilities::universal_test_builder::Builder>::Output>,
 			}
 
 			pub struct UniversalBuilder {
@@ -392,6 +429,22 @@ mod tests {
 			}
 
 			impl UniversalBuilderContext {
+				pub fn first_builder(&self) -> &<FirstBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.first_builder.as_ref().expect("`first_builder` was not requested: call `with_first_builder()`")
+				}
+
+				pub fn first_builder_mut(&mut self) -> &mut <FirstBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.first_builder.as_mut().expect("`first_builder` was not requested: call `with_first_builder()`")
+				}
+
+				pub fn second_builder(&self) -> &<SecondBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.second_builder.as_ref().expect("`second_builder` was not requested: call `with_second_builder()`")
+				}
+
+				pub fn second_builder_mut(&mut self) -> &mut <SecondBuilder as rustilities::universal_test_builder::Builder>::Output {
+					self.second_builder.as_mut().expect("`second_builder` was not requested: call `with_second_builder()`")
+				}
+
 				pub fn execute<F>(self, test: F)
 				where
 					F: FnOnce(Self),

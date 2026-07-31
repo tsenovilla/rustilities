@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #![cfg(feature = "universal-test-builder")]
 
-use rustilities::universal_test_builder::Builder;
+use rustilities::universal_test_builder::{Builder, AsyncBuilder};
 use rustilities_procedural::universal_test_builder;
 
 struct Builder1;

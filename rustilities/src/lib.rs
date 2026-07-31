@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! # Description
 //!
@@ -7,8 +7,21 @@
 //!
 //! # Features
 //!
-//! The crate splits is functionalities into several features, allowing to compile only the
+//! The crate splits its functionalities into several features, allowing to compile only the
 //! parts that are needed.
+//!
+//! Some features build on top of others and enable them on their own, so requesting one is
+//! enough to get everything it relies on:
+//!
+//! - `manifest` enables `paths`.
+//! - `diesel` enables `postgres`.
+//! - `diesel-async` enables `diesel`, and therefore `postgres` as well.
+//!
+//! `fmt`, `paths`, `parsing` and `universal-test-builder` do not enable any other feature.
+//!
+//! Note that `postgres`, `diesel` and `diesel-async` only contribute the database builders
+//! inside `universal_test_builder::builders`. They do not enable `universal-test-builder`,
+//! so they expose nothing unless it is requested alongside them.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 

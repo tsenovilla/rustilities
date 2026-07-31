@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #[cfg(all(test, feature = "universal-test-builder"))]
 mod tests;

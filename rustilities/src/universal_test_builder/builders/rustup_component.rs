@@ -1,22 +1,28 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::universal_test_builder::Builder;
 use std::process::Command;
 
 pub struct RustupComponentArgs {
+	/// Component name as rustup knows it, e.g. `"rustfmt"`.
 	pub component: String,
+	/// Toolchain to act on; `None` = the active toolchain.
 	pub toolchain: Option<String>,
 	/// true = install, false = remove.
 	pub install: bool,
 }
 
 pub struct RustupComponentOutput {
+	/// The component that was acted on.
 	pub component: String,
+	/// The toolchain it was acted on; `None` = the active toolchain.
 	pub toolchain: Option<String>,
 	/// Whether the component was installed *before* build ran.
 	was_installed: bool,
 }
 
+/// Installs (or removes) a rustup component for the duration of the test and restores
+/// the original state on cleanup.
 pub struct RustupComponent;
 
 impl Builder for RustupComponent {

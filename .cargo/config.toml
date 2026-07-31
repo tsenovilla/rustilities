@@ -1,0 +1,15 @@
+[alias]
+docsrs = [
+	"doc",
+	"--all-features",
+	"--no-deps",
+	"-Zrustdoc-map",
+    "--open",
+	"--config",
+	"build.rustdocflags=['--cfg', 'docsrs']",
+]
+
+# Makes `--no-deps` link dependency types to docs.rs instead of leaving them
+# unlinked. Only takes effect under -Zrustdoc-map.
+[doc.extern-map.registries]
+crates-io = "https://docs.rs/"

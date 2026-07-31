@@ -1,0 +1,1 @@
+DROP TABLE universal_test_builder_smoke;

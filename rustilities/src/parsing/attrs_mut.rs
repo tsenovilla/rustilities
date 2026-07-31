@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! This module provides the [`AttrsMut`] trait, a convenient way to retrieve mutable references
 //! for attributes from a [`syn`] type if they exist. It is particularly useful when working with
