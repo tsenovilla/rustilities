@@ -3,7 +3,7 @@ resolver = "2"
 members = ["rustilities", "rustilities-procedural"]
 
 [workspace.package]
-version = "3.2.0"
+version = "3.2.1"
 repository = "https://github.com/tsenovilla/rustilities"
 license = "MIT OR Apache-2.0"
 edition = "2024"
@@ -29,4 +29,4 @@ trybuild = "1.0.115"
 
 # local crates
 rustilities = { path = "rustilities" }
-rustilities-procedural = { path = "rustilities-procedural", version = "3.2.0" }
+rustilities-procedural = { path = "rustilities-procedural", version = "3.2.1" }
