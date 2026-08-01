@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 #[cfg(all(feature = "universal-test-builder", feature = "diesel-async"))]
-mod diesel_async_postgres_db;
+pub mod diesel_async_postgres_db;
 #[cfg(all(feature = "universal-test-builder", feature = "diesel"))]
 pub mod diesel_postgres_db;
 #[cfg(all(feature = "universal-test-builder", feature = "postgres"))]
